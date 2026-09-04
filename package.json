@@ -12,7 +12,7 @@
     "url": "git+https://github.com/gregor/web-core.git"
   },
   "bin": {
-    "web-core": "./bin/web-core.js"
+    "web-core": "bin/web-core.js"
   },
   "files": [
     "bin",

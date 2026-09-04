@@ -32,12 +32,24 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           PKG="$(node -p "require('./package.json').version")"
           [ "$TAG" = "$PKG" ] || { echo "tag $TAG != package.json $PKG"; exit 1; }
-      - run: npm publish --provenance --access public
+      # npm refuses to publish a prerelease without an explicit --tag, and a
+      # prerelease must not land on `latest` where the apps would pick it up.
+      - name: Publish
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          case "$PKG" in
+            *-*) TAG=rc ;;
+            *)   TAG=latest ;;
+          esac
+          echo "publishing $PKG under dist-tag $TAG"
+          npm publish --provenance --access public --tag "$TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   fan-out:
     needs: publish
+    # Prereleases are for piloting; they must not open bump PRs in all five apps.
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
