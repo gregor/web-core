@@ -55,11 +55,21 @@ jobs:
       matrix:
         repo: [web-budget, web-dashboard, web-freelance, web-immo, web-todo]
     steps:
+      # The publish already succeeded by this point, so a missing or expired
+      # FANOUT_TOKEN must not fail the release. The apps still pick the new version
+      # up through their weekly Dependabot run; the dispatch only makes it immediate.
       - name: Dispatch bump to ${{ matrix.repo }}
         env:
           GH_TOKEN: ${{ secrets.FANOUT_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: |
-          gh api "repos/${{ github.repository_owner }}/${{ matrix.repo }}/dispatches" \
-            -f event_type=web-core-release \
-            -F "client_payload[version]=${VERSION#v}"
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning title=Fan-out skipped::FANOUT_TOKEN is not set, so ${{ matrix.repo }} was not notified. It will pick up ${VERSION#v} on its next weekly Dependabot run."
+            exit 0
+          fi
+          if ! gh api "repos/${{ github.repository_owner }}/${{ matrix.repo }}/dispatches" \
+              -f event_type=web-core-release \
+              -F "client_payload[version]=${VERSION#v}"; then
+            echo "::warning title=Fan-out failed::Could not dispatch to ${{ matrix.repo }}. Dependabot remains the fallback."
+            exit 0
+          fi
