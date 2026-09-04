@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.tgz
 .DS_Store
+
+# Regenerated on every prepare-fixture run; the packed tarball path is machine-specific.
+test/fixtures/app/package-lock.json
