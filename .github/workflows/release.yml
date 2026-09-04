@@ -27,6 +27,8 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
       - name: Verify tag matches package.json version
         run: |
           TAG="${GITHUB_REF_NAME#v}"
@@ -34,6 +36,9 @@ jobs:
           [ "$TAG" = "$PKG" ] || { echo "tag $TAG != package.json $PKG"; exit 1; }
       # npm refuses to publish a prerelease without an explicit --tag, and a
       # prerelease must not land on `latest` where the apps would pick it up.
+      # Published via npm Trusted Publishing (OIDC), not a token: the account
+      # requires a one-time password for publishing, which no CI token can supply.
+      # OIDC sidesteps 2FA entirely and attests provenance on its own.
       - name: Publish
         run: |
           PKG="$(node -p "require('./package.json').version")"
@@ -42,9 +47,7 @@ jobs:
             *)   TAG=latest ;;
           esac
           echo "publishing $PKG under dist-tag $TAG"
-          npm publish --provenance --access public --tag "$TAG"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --access public --tag "$TAG"
 
   fan-out:
     needs: publish
