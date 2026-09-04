@@ -2,4 +2,7 @@ node_modules
 dist
 coverage
 package-lock.json
-test/fixtures/app/package-lock.json
+# Formatted by its own toolchain during `npm test`. web-core's prettier cannot read
+# it directly: the fixture's package.json points `prettier` at web-core itself,
+# which is only installed once prepare-fixture.mjs has packed and installed it.
+test/fixtures
