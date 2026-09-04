@@ -25,7 +25,7 @@ update was reviewed and merged five times. Those 18 now live here as regular
 
 ```js
 // eslint.config.js
-export { default } from "@gregor_herdmann/web-core/eslint";
+export { default } from '@gregor_herdmann/web-core/eslint';
 ```
 
 ```jsonc
@@ -39,11 +39,11 @@ export { default } from "@gregor_herdmann/web-core/eslint";
 
 ```ts
 // vite.config.ts
-import { defineAppConfig } from "@gregor_herdmann/web-core/vite";
+import { defineAppConfig } from '@gregor_herdmann/web-core/vite';
 
 export default defineAppConfig({
   chunks: {
-    "vendor-react": ["react", "react-dom", "react-router", "react-router-dom"],
+    'vendor-react': ['react', 'react-dom', 'react-router', 'react-router-dom'],
   },
 });
 ```

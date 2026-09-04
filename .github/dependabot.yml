@@ -1,52 +1,52 @@
 version: 2
 
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "15:00"
-      timezone: "Europe/Berlin"
+      interval: 'weekly'
+      day: 'friday'
+      time: '15:00'
+      timezone: 'Europe/Berlin'
     cooldown:
       default-days: 14
       semver-patch-days: 7
       semver-minor-days: 14
       semver-major-days: 28
     open-pull-requests-limit: 10
-    reviewers: ["gregor"]
+    reviewers: ['gregor']
     commit-message:
-      prefix: "chore"
+      prefix: 'chore'
     versioning-strategy: increase
     ignore:
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
       # TS 7.0 shipped without the programmatic compiler API, so typescript-eslint
       # (peer: <6.1.0) cannot run on it. The API is expected in 7.1 — ignoring only
       # 7.0.x means Dependabot re-opens this PR by itself once 7.1.0 publishes.
-      - dependency-name: "typescript"
-        versions: ["7.0.x"]
+      - dependency-name: 'typescript'
+        versions: ['7.0.x']
     groups:
       react-types:
-        patterns: ["@types/react", "@types/react-dom"]
+        patterns: ['@types/react', '@types/react-dom']
       typescript-eslint:
-        patterns: ["@typescript-eslint/*"]
+        patterns: ['@typescript-eslint/*']
       tailwindcss:
-        patterns: ["tailwindcss", "@tailwindcss/*"]
+        patterns: ['tailwindcss', '@tailwindcss/*']
       vite:
-        patterns: ["vite", "@vitejs/*", "vitest"]
+        patterns: ['vite', '@vitejs/*', 'vitest']
       eslint:
-        patterns: ["eslint", "@eslint/*", "eslint-plugin-*"]
+        patterns: ['eslint', '@eslint/*', 'eslint-plugin-*']
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "15:00"
-      timezone: "Europe/Berlin"
+      interval: 'weekly'
+      day: 'friday'
+      time: '15:00'
+      timezone: 'Europe/Berlin'
     cooldown:
       default-days: 14
-    reviewers: ["gregor"]
+    reviewers: ['gregor']
     commit-message:
-      prefix: "chore"
+      prefix: 'chore'

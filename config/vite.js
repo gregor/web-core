@@ -1,7 +1,7 @@
-import path from "node:path";
-import { defineConfig, mergeConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+import path from 'node:path';
+import { defineConfig, mergeConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 /**
  * Build a manualChunks function from a { chunkName: [packageName] } map.
@@ -9,12 +9,9 @@ import tailwindcss from "@tailwindcss/vite";
  * react bucket last, since half the tree lives under node_modules/react*.
  */
 export function manualChunksFromMap(map) {
-  const entries = Object.entries(map).map(([chunk, pkgs]) => [
-    chunk,
-    pkgs.map((p) => `node_modules/${p}/`),
-  ]);
+  const entries = Object.entries(map).map(([chunk, pkgs]) => [chunk, pkgs.map((p) => `node_modules/${p}/`)]);
   return (id) => {
-    const normalized = id.replaceAll("\\", "/");
+    const normalized = id.replaceAll('\\', '/');
     for (const [chunk, needles] of entries) {
       if (needles.some((n) => normalized.includes(n))) return chunk;
     }
@@ -34,7 +31,7 @@ export function defineAppConfig(options = {}) {
 
   const base = defineConfig({
     plugins: [react(), tailwindcss()],
-    resolve: { alias: { "@": path.resolve(root, "./src") } },
+    resolve: { alias: { '@': path.resolve(root, './src') } },
     build: chunks
       ? {
           rollupOptions: {
@@ -49,7 +46,7 @@ export function defineAppConfig(options = {}) {
       port: Number(process.env.PORT) || 3000,
       strictPort: process.env.PORT !== undefined,
       proxy: {
-        "/api": {
+        '/api': {
           target: `http://localhost:${process.env.SERVER_PORT ?? serverPort}`,
           changeOrigin: true,
         },

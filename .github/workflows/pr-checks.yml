@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       node-version:
-        description: "Override Node version; defaults to engines.node from package.json"
+        description: 'Override Node version; defaults to engines.node from package.json'
         type: string
         required: false
 
