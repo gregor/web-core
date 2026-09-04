@@ -1,0 +1,16 @@
+{
+  "name": "fixture-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "prettier": "@gregor_herdmann/web-core/prettier",
+  "dependencies": {
+    "express": "5.2.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.18.2"
+  },
+  "devDependencies": {
+    "@gregor_herdmann/web-core": "file:../../../../../../../../var/folders/3w/f9pl5cvs22x98gyv35gzvt1m0000gn/T/web-core-pack-9RJJ0r/gregor_herdmann-web-core-1.0.0-rc.0.tgz"
+  }
+}

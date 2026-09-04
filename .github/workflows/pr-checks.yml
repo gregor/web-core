@@ -1,0 +1,39 @@
+# Reusable workflow called by each web-* app. Keeping it here means an actions
+# bump is reviewed once, not five times.
+name: pr-checks
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: "Override Node version; defaults to engines.node from package.json"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          show-progress: false
+      - id: node
+        run: |
+          if [ -n "${{ inputs.node-version }}" ]; then
+            echo "version=${{ inputs.node-version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run format
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build

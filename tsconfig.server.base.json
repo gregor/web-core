@@ -1,0 +1,15 @@
+{
+  "$comment": "outDir, rootDir and include are deliberately absent: they resolve against the declaring file, so a shared outDir would emit into node_modules. Keep them in each app's leaf config.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true,
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  }
+}

@@ -1,0 +1,27 @@
+# Patch and minor bumps merge themselves once ci is green. Majors are left for a
+# human, and nothing here publishes: the release tag stays a manual push, so a bot
+# can never ship a new toolchain to five production apps on its own.
+name: dependabot auto-merge
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - if: contains(fromJSON('["version-update:semver-patch","version-update:semver-minor"]'), steps.meta.outputs.update-type)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

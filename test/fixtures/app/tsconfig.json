@@ -1,0 +1,5 @@
+{
+  "extends": "@gregor_herdmann/web-core/tsconfig.base.json",
+  "compilerOptions": { "paths": { "@/*": ["./src/*"] } },
+  "include": ["src"]
+}

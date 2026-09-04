@@ -1,0 +1,53 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v7
+      - id: node
+        run: echo "version=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          [ "$TAG" = "$PKG" ] || { echo "tag $TAG != package.json $PKG"; exit 1; }
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  fan-out:
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: [web-budget, web-dashboard, web-freelance, web-immo, web-todo]
+    steps:
+      - name: Dispatch bump to ${{ matrix.repo }}
+        env:
+          GH_TOKEN: ${{ secrets.FANOUT_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          gh api "repos/${{ github.repository_owner }}/${{ matrix.repo }}/dispatches" \
+            -f event_type=web-core-release \
+            -F "client_payload[version]=${VERSION#v}"
