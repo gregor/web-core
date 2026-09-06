@@ -64,6 +64,24 @@ describe('bin resolution', () => {
   });
 });
 
+describe('package manifest', () => {
+  const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+
+  // An app's test files import these by name, so they must resolve from the app's
+  // own node_modules. npm auto-installs REQUIRED peers there; as plain dependencies
+  // they may be nested under this package instead — they are, in web-todo — leaving
+  // TypeScript unable to resolve the import even though the tests run fine.
+  it.each(['vitest', '@testing-library/react', '@testing-library/user-event'])(
+    'declares %s as a required peer so it lands at the app root',
+    (pkg) => {
+      expect(manifest.peerDependencies?.[pkg]).toBeDefined();
+      expect(manifest.dependencies?.[pkg]).toBeUndefined();
+      // Optional peers are not auto-installed, which would defeat the point.
+      expect(manifest.peerDependenciesMeta?.[pkg]?.optional).not.toBe(true);
+    },
+  );
+});
+
 describe('manualChunksFromMap', () => {
   const fn = manualChunksFromMap({
     'vendor-charts': ['recharts'],
