@@ -47,6 +47,11 @@ const commands = {
   'lint:fix': (rest) => run('eslint', 'eslint', [...LINT_TARGETS, '--fix', ...rest]),
   format: (rest) => run('prettier', 'prettier', [...PRETTIER_IGNORE, '--check', '.', ...rest]),
   'format:fix': (rest) => run('prettier', 'prettier', [...PRETTIER_IGNORE, '--write', '.', ...rest]),
+  // --passWithNoTests so every app can carry a test script from day one, and the
+  // first test someone writes runs without any further wiring.
+  test: (rest) => run('vitest', 'vitest', ['run', '--passWithNoTests', ...rest]),
+  'test:watch': (rest) => run('vitest', 'vitest', [...rest]),
+  'test:coverage': (rest) => run('vitest', 'vitest', ['run', '--passWithNoTests', '--coverage', ...rest]),
   preview: (rest) => run('vite', 'vite', ['preview', ...rest]),
   // Raw passthroughs, so app-shaped invocations keep their arguments in the app.
   vite: (rest) => run('vite', 'vite', rest),
@@ -55,6 +60,7 @@ const commands = {
   eslint: (rest) => run('eslint', 'eslint', rest),
   prettier: (rest) => run('prettier', 'prettier', rest),
   concurrently: (rest) => run('concurrently', 'concurrently', rest),
+  vitest: (rest) => run('vitest', 'vitest', rest),
 };
 
 const [cmd, ...rest] = process.argv.slice(2);

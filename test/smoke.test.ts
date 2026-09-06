@@ -9,6 +9,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -31,7 +32,13 @@ function webCore(args: string[], cwd = fixture) {
 function scratchFixture() {
   const dir = mkdtempSync(path.join(tmpdir(), 'web-core-fixture-'));
   const dest = path.join(dir, 'app');
-  cpSync(fixture, dest, { recursive: true });
+  // Copy the sources but symlink node_modules: duplicating the whole tree for every
+  // negative case is slow enough to blow the test timeout.
+  cpSync(fixture, dest, {
+    recursive: true,
+    filter: (src) => path.basename(src) !== 'node_modules',
+  });
+  symlinkSync(path.join(fixture, 'node_modules'), path.join(dest, 'node_modules'), 'dir');
   rmSync(path.join(dest, 'dist'), { recursive: true, force: true });
   return dest;
 }
@@ -144,6 +151,36 @@ describe('lint', () => {
     const dir = scratchFixture();
     appendFileSync(path.join(dir, 'src/lib/util.ts'), 'const unused = 1;\n');
     expect(webCore(['lint'], dir).code).not.toBe(0);
+  });
+});
+
+describe('test runner', () => {
+  it('runs unit and component tests in an app with no test dependencies', () => {
+    // The fixture depends only on react, react-dom, react-router-dom and express.
+    // vitest, jsdom and Testing Library all come from web-core.
+    expect(webCore(['test']).code).toBe(0);
+  });
+
+  it('fails when a test fails', () => {
+    const dir = scratchFixture();
+    writeFileSync(
+      path.join(dir, 'src/__tests__/failing.test.ts'),
+      "import { expect, it } from 'vitest';\nit('fails', () => expect(1).toBe(2));\n",
+    );
+    expect(webCore(['test'], dir).code).not.toBe(0);
+  });
+
+  it('passes when an app has no tests at all', () => {
+    // Every app carries a test script from day one, so this must not be an error.
+    const dir = scratchFixture();
+    rmSync(path.join(dir, 'src/__tests__'), { recursive: true, force: true });
+    expect(webCore(['test'], dir).code).toBe(0);
+  });
+
+  it('collects coverage', () => {
+    const dir = scratchFixture();
+    expect(webCore(['test:coverage'], dir).code).toBe(0);
+    expect(existsSync(path.join(dir, 'coverage/index.html'))).toBe(true);
   });
 });
 

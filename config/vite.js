@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, mergeConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -29,6 +30,12 @@ export function manualChunksFromMap(map) {
 export function defineAppConfig(options = {}) {
   const { root = process.cwd(), chunks, serverPort = 3001, override } = options;
 
+  // Where this package actually lives on disk. When an app's node_modules is a
+  // symlink (npm link, a linked workspace), vite resolves our setup file to its
+  // real path, which sits outside the app root and is refused by the fs allowlist
+  // unless it is named here.
+  const webCoreRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
   const base = defineConfig({
     plugins: [react(), tailwindcss()],
     resolve: { alias: { '@': path.resolve(root, './src') } },
@@ -39,7 +46,27 @@ export function defineAppConfig(options = {}) {
           },
         }
       : {},
+    test: {
+      // jsdom by default, since these are React apps and component tests are the
+      // common case. A pure-node test opts out with a `@vitest-environment node`
+      // docblock at the top of the file.
+      environment: 'jsdom',
+      // A bare specifier rather than an absolute path: web-core is always a direct
+      // dependency of the app, so this resolves from the app root, and it keeps
+      // working when node_modules is a symlink (npm link, or a linked workspace),
+      // where an absolute path outside the project root is refused by vite's fs
+      // allowlist.
+      setupFiles: ['@gregor_herdmann/web-core/vitest-setup'],
+      css: false,
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        include: ['src/**', 'server/**'],
+        exclude: ['**/*.d.ts', '**/main.tsx'],
+      },
+    },
     server: {
+      fs: { allow: [root, webCoreRoot] },
       // PORT is assigned by the Claude Code preview when 3000 is taken; be strict
       // about it then, since silently drifting to another port points the preview
       // pane at the wrong app. Plain `npm start` keeps the old fall-through behaviour.

@@ -36,4 +36,7 @@ jobs:
       - run: npm run format
       - run: npm run lint
       - run: npm run typecheck
+      # Every app carries a test script; --passWithNoTests means the ones without
+      # tests yet pass trivially, and the first test written here just runs.
+      - run: npm test
       - run: npm run build
