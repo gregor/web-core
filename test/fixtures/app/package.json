@@ -11,6 +11,6 @@
     "react-router-dom": "7.18.2"
   },
   "devDependencies": {
-    "@gregor_herdmann/web-core": "file:../../../../../../../../var/folders/3w/f9pl5cvs22x98gyv35gzvt1m0000gn/T/web-core-pack-6YJtQc/gregor_herdmann-web-core-1.0.0.tgz"
+    "@gregor_herdmann/web-core": "file:../../../../../../../../var/folders/3w/f9pl5cvs22x98gyv35gzvt1m0000gn/T/web-core-pack-rp27cW/gregor_herdmann-web-core-1.1.0.tgz"
   }
 }
