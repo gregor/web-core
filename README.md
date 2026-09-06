@@ -52,6 +52,25 @@ Delete the app's `prettier.config.ts` and `.npmrc`, and remove every tooling
 devDependency. **`vite` in particular must go** — two copies of vite means two plugin
 instances and confusing failures.
 
+## Testing
+
+`web-core test` runs vitest. Apps declare no test dependencies — vitest, jsdom,
+Testing Library and coverage all come from here, and `defineAppConfig` wires up the
+environment and jest-dom matchers, so a test file is all an app needs to add.
+
+```ts
+// src/lib/money.test.ts — pure unit test
+// @vitest-environment node
+import { expect, it } from 'vitest';
+
+// src/components/Thing.test.tsx — component test, jsdom is the default
+import { render, screen } from '@testing-library/react';
+```
+
+`web-core test:watch` and `web-core test:coverage` are also available. Every app
+carries a test script, and `--passWithNoTests` keeps that honest before the first
+test exists.
+
 ## Things that will bite you
 
 - **`paths`, `include`, `outDir` and `rootDir` must stay in each app's tsconfig.**
