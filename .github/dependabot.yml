@@ -27,8 +27,22 @@ updates:
       - dependency-name: 'typescript'
         versions: ['7.0.x']
     groups:
-      react-types:
-        patterns: ['@types/react', '@types/react-dom']
+      # react and its types must move together: a @types/react that is ahead of or
+      # behind the runtime is the most likely way this package breaks its consumers,
+      # and the apps no longer pin any of it themselves.
+      react:
+        patterns: ['react', 'react-dom', 'react-router-dom', '@types/react', '@types/react-dom']
+      express:
+        patterns:
+          - 'express'
+          - 'express-session'
+          - 'cors'
+          - 'memorystore'
+          - '@types/express'
+          - '@types/express-session'
+          - '@types/cors'
+      i18n:
+        patterns: ['i18next', 'react-i18next']
       typescript-eslint:
         patterns: ['@typescript-eslint/*']
       tailwindcss:
