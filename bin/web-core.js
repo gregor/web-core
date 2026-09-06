@@ -2,7 +2,9 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { resolveBin } from '../lib/resolve-bin.js';
+import { releaseNotes } from '../lib/release-notes.js';
 
 /** Run a tool. cwd is deliberately not set, so it stays the consumer repo. */
 function run(pkg, binName, args) {
@@ -61,6 +63,23 @@ const commands = {
   prettier: (rest) => run('prettier', 'prettier', rest),
   concurrently: (rest) => run('concurrently', 'concurrently', rest),
   vitest: (rest) => run('vitest', 'vitest', rest),
+  // Prints the Markdown an app's bump PR uses to say what actually changed.
+  // Best-effort by design: a thin PR description is a nuisance, a bump PR that
+  // failed to open is a broken release, so this never fails the caller.
+  async 'release-notes'([from, to]) {
+    if (!from || !to) {
+      console.error('usage: web-core release-notes <from-version> <to-version>');
+      return 1;
+    }
+    const { url } = createRequire(import.meta.url)('../package.json').repository;
+    const repo = url.replace(/^.*github\.com[/:]/, '').replace(/\.git$/, '');
+    try {
+      process.stdout.write(await releaseNotes({ repo, from, to, token: process.env.GITHUB_TOKEN }));
+    } catch {
+      // Nothing to say; the caller falls back to its plain body.
+    }
+    return 0;
+  },
 };
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -73,4 +92,5 @@ if (!Object.hasOwn(commands, cmd)) {
   console.error(`web-core: unknown command "${cmd}"\nRun "web-core --help".`);
   process.exit(1);
 }
-process.exit(commands[cmd](rest));
+const status = commands[cmd](rest);
+process.exit(status instanceof Promise ? await status : status);

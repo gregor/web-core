@@ -5,11 +5,18 @@ export default [
   { ignores: ['dist/**', 'node_modules/**', 'test/fixtures/**'] },
   js.configs.recommended,
   {
-    files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: { process: 'readonly', console: 'readonly' },
+      // Node 24 globals this repo actually uses. fetch/Response are how
+      // lib/release-notes.js talks to the GitHub API, with no dependency.
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        globalThis: 'readonly',
+      },
     },
   },
   ...shared,
