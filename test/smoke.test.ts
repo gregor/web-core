@@ -1,14 +1,15 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
-  appendFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -113,6 +114,16 @@ describe('typecheck', () => {
     const dir = scratchFixture();
     writeFileSync(path.join(dir, 'src/lib/util.ts'), 'export const n: number = "not a number";\n');
     expect(webCore(['typecheck'], dir).code).not.toBe(0);
+  });
+
+  it('type-checks CSS side-effect imports without the app depending on vite', () => {
+    // src/vite-env.d.ts references @gregor_herdmann/web-core/client rather than
+    // vite/client. Apps no longer depend on vite, and npm does not reliably hoist
+    // it to the app root — in web-todo it nested under this package instead, which
+    // broke typecheck while the build kept working.
+    const dir = scratchFixture();
+    expect(readFileSync(path.join(dir, 'src/main.tsx'), 'utf8')).toContain("import './index.css'");
+    expect(webCore(['typecheck'], dir).code).toBe(0);
   });
 
   it('resolves the @/ alias to the app src, not to web-core', () => {

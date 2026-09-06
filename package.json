@@ -1,6 +1,6 @@
 {
   "name": "@gregor_herdmann/web-core",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shared build, lint and format toolchain for the web-* apps",
   "license": "MIT",
   "type": "module",
@@ -27,7 +27,8 @@
     "./vite": "./config/vite.js",
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.server.base.json": "./tsconfig.server.base.json",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client": "./config/client.d.ts"
   },
   "scripts": {
     "test": "node test/prepare-fixture.mjs && vitest run",
