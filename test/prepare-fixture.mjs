@@ -22,6 +22,8 @@ const tarball = path.join(
 
 rmSync(path.join(fixture, 'node_modules'), { recursive: true, force: true });
 rmSync(path.join(fixture, 'package-lock.json'), { force: true });
-run('npm', ['install', '--no-audit', '--no-fund', '--save-dev', tarball], fixture);
+// --no-save: recording the dependency would write this machine's temp tarball path
+// into a tracked file, so every fixture prep would dirty the working tree.
+run('npm', ['install', '--no-audit', '--no-fund', '--no-save', tarball], fixture);
 
 console.log('fixture prepared');

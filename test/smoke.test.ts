@@ -17,6 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { manualChunksFromMap } from '../config/vite.js';
 import { resolveBin } from '../lib/resolve-bin.js';
+import { compareVersions, releaseNotes } from '../lib/release-notes.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fixture = path.join(root, 'test/fixtures/app');
@@ -229,5 +230,105 @@ describe('format', () => {
     mkdirSync(path.join(dir, 'dist'), { recursive: true });
     writeFileSync(path.join(dir, 'dist/ugly.js'), 'const   x=1\n');
     expect(webCore(['format'], dir).code).toBe(0);
+  });
+});
+
+describe('release notes', () => {
+  // Stubbed rather than live: the bump PRs these feed must not depend on
+  // GitHub being reachable from a test run, and the range logic is the part
+  // worth pinning down.
+  function stubGitHub(releases: unknown[], commits: unknown[] | null) {
+    const calls: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string) => {
+      calls.push(String(url));
+      const body = String(url).includes('/releases') ? releases : { commits };
+      if (commits === null && !String(url).includes('/releases')) {
+        return { ok: false, status: 404, json: async () => ({}) } as Response;
+      }
+      return { ok: true, status: 200, json: async () => body } as Response;
+    }) as typeof fetch;
+    return { calls, restore: () => (globalThis.fetch = original) };
+  }
+
+  const release = (v: string, body: string) => ({ tag_name: `v${v}`, name: `v${v}`, body });
+  const commit = (sha: string, message: string) => ({
+    sha,
+    commit: { message },
+    html_url: `https://github.com/gregor/web-core/commit/${sha}`,
+  });
+
+  it('orders versions, treating a prerelease as older than its release', () => {
+    expect(compareVersions('1.2.0', '1.10.0')).toBe(-1);
+    expect(compareVersions('v1.3.0', '1.3.0')).toBe(0);
+    expect(compareVersions('1.0.0-rc.1', '1.0.0')).toBe(-1);
+    expect(compareVersions('2.0.0', '1.9.9')).toBe(1);
+  });
+
+  it('quotes every release in the range and no others', async () => {
+    const stub = stubGitHub(
+      [
+        release('1.4.0', '## What&apos;s Changed\n* newest'),
+        release('1.3.0', 'middle'),
+        release('1.2.0', 'already had this one'),
+      ],
+      [commit('abc1234', 'feat: a thing (#12)\n\nbody')],
+    );
+    try {
+      const md = await releaseNotes({ repo: 'gregor/web-core', from: '1.2.0', to: '1.4.0' });
+      expect(md).toContain('### v1.4.0');
+      expect(md).toContain('### v1.3.0');
+      expect(md).not.toContain('already had this one');
+      // Newest first, as Dependabot does it.
+      expect(md.indexOf('### v1.4.0')).toBeLessThan(md.indexOf('### v1.3.0'));
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('renders collapsed sections GitHub will parse as Markdown', async () => {
+    const stub = stubGitHub([release('1.4.0', 'notes')], [commit('abc1234', 'feat: a thing (#12)')]);
+    try {
+      const md = await releaseNotes({ repo: 'gregor/web-core', from: '1.3.0', to: '1.4.0' });
+      // The blank line after </summary> is what makes the Markdown render.
+      expect(md).toContain('<summary>Release notes</summary>\n\n');
+      expect(md).toContain('<summary>Commits (1)</summary>\n\n');
+      expect(md).toContain('[`abc1234`](https://github.com/gregor/web-core/commit/abc1234) feat: a thing (#12)');
+      // Only the first line of a commit message, never the body.
+      expect(md).not.toContain('body');
+      expect(md).toContain('compare/v1.3.0...v1.4.0');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('degrades to the section it could fetch rather than throwing', async () => {
+    const stub = stubGitHub([release('1.4.0', 'notes')], null);
+    try {
+      const md = await releaseNotes({ repo: 'gregor/web-core', from: '1.3.0', to: '1.4.0' });
+      expect(md).toContain('### v1.4.0');
+      expect(md).not.toContain('<summary>Commits');
+    } finally {
+      stub.restore();
+    }
+  });
+
+  it('returns nothing when GitHub is unreachable, so the bump PR still opens', async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      throw new Error('offline');
+    }) as typeof fetch;
+    try {
+      const md = await releaseNotes({ repo: 'gregor/web-core', from: '1.3.0', to: '1.4.0' });
+      expect(md).toBe('');
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it('rejects a call without both versions', () => {
+    const r = webCore(['release-notes', '1.3.0']);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('usage:');
   });
 });
