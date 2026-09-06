@@ -21,6 +21,14 @@ jobs:
           node-version: ${{ steps.node.outputs.version }}
           cache: npm
       - run: npm ci
+      # pr-checks.yml only runs when an app calls it, so nothing here exercises it.
+      # actionlint at least catches syntax and expression errors before a release
+      # ships a broken workflow to five repos.
+      - name: Lint workflows
+        run: |
+          DIR="$(mktemp -d)"
+          (cd "$DIR" && bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash))
+          "$DIR/actionlint" -color
       - run: npm run format
       - run: npm run lint
       # Packs web-core and installs the tarball into the fixture app, then runs the
