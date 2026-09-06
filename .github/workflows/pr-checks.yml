@@ -15,6 +15,8 @@ permissions:
 
 jobs:
   checks:
+    # Rendered in the app as "<caller job name> / Format, Lint, Test & Build".
+    name: Format, Lint, Test & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,7 +27,15 @@ jobs:
           if [ -n "${{ inputs.node-version }}" ]; then
             echo "version=${{ inputs.node-version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")" >> "$GITHUB_OUTPUT"
+            # Apps pin ">=24"; setup-node would read that as a range and resolve to
+            # whatever the newest release is, so strip it to a major. Guard the
+            # missing-field case, which otherwise throws a bare TypeError.
+            V="$(node -p "(require('./package.json').engines?.node ?? '').replace(/[^0-9.]/g,'')")"
+            if [ -z "$V" ]; then
+              echo "::error title=No Node version::package.json needs an engines.node field"
+              exit 1
+            fi
+            echo "version=$V" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v7.0.0
         with:
@@ -36,7 +46,14 @@ jobs:
       - run: npm run format
       - run: npm run lint
       - run: npm run typecheck
-      # Every app carries a test script; --passWithNoTests means the ones without
-      # tests yet pass trivially, and the first test written here just runs.
-      - run: npm test
+      # Assert before running, so a removed test script reports what is wrong rather
+      # than npm's bare "Missing script: test". The apps' script is `web-core test`,
+      # which passes with no test files but fails loudly once a test exists.
+      - name: Test
+        run: |
+          node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)" || {
+            echo '::error title=Missing test script::package.json needs a "test" script'
+            exit 1
+          }
+          npm test
       - run: npm run build
