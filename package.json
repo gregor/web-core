@@ -1,6 +1,6 @@
 {
   "name": "@gregor_herdmann/web-core",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0",
   "description": "Shared build, lint and format toolchain for the web-* apps",
   "license": "MIT",
   "type": "module",
