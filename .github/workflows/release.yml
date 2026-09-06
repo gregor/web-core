@@ -58,6 +58,25 @@ jobs:
       matrix:
         repo: [web-budget, web-dashboard, web-freelance, web-immo, web-todo]
     steps:
+      # npm publish returns before the registry CDN serves the new version, so a
+      # dispatch fired immediately makes consumers fail with ETARGET. Wait until the
+      # version is actually installable before telling anyone about it.
+      - name: Wait for the registry to serve ${{ github.ref_name }}
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          V="${VERSION#v}"
+          for i in $(seq 1 30); do
+            if npm view "@gregor_herdmann/web-core@$V" version >/dev/null 2>&1; then
+              echo "$V is resolvable after $i attempt(s)"
+              exit 0
+            fi
+            echo "attempt $i: not yet resolvable"
+            sleep 10
+          done
+          echo "::error title=Registry propagation::$V never became resolvable"
+          exit 1
+
       # The publish already succeeded by this point, so a missing or expired
       # FANOUT_TOKEN must not fail the release. The apps still pick the new version
       # up through their weekly Dependabot run; the dispatch only makes it immediate.
