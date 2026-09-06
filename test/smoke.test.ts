@@ -15,6 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { manualChunksFromMap } from '../config/vite.js';
 import { resolveBin } from '../lib/resolve-bin.js';
 import { compareVersions, releaseNotes } from '../lib/release-notes.js';
@@ -65,22 +66,91 @@ describe('bin resolution', () => {
   });
 });
 
-describe('package manifest', () => {
-  const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 
+/**
+ * The runtime packages the apps no longer declare for themselves, and the tooling
+ * packages their test files import by name.
+ *
+ * Spelled out rather than derived from the manifest on purpose. Deriving the list
+ * from `peerDependencies` means demoting a package to `dependencies` also removes
+ * it from the list, so the suite goes green having quietly stopped checking it —
+ * the same "the check ran on zero files" failure the negative cases below exist to
+ * catch. The set-equality test keeps the list honest in the other direction.
+ */
+const RUNTIME_PEERS = [
+  'cors',
+  'date-fns',
+  'express',
+  'express-session',
+  'googleapis',
+  'i18next',
+  'lucide-react',
+  'memorystore',
+  'react',
+  'react-dom',
+  'react-i18next',
+  'react-router-dom',
+  'recharts',
+];
+
+const TOOLING_PEERS = ['vitest', '@testing-library/react', '@testing-library/user-event'];
+
+describe('package manifest', () => {
   // An app's test files import these by name, so they must resolve from the app's
   // own node_modules. npm auto-installs REQUIRED peers there; as plain dependencies
   // they may be nested under this package instead — they are, in web-todo — leaving
   // TypeScript unable to resolve the import even though the tests run fine.
-  it.each(['vitest', '@testing-library/react', '@testing-library/user-event'])(
-    'declares %s as a required peer so it lands at the app root',
-    (pkg) => {
-      expect(manifest.peerDependencies?.[pkg]).toBeDefined();
-      expect(manifest.dependencies?.[pkg]).toBeUndefined();
-      // Optional peers are not auto-installed, which would defeat the point.
-      expect(manifest.peerDependenciesMeta?.[pkg]?.optional).not.toBe(true);
-    },
-  );
+  // Neither list may drift from the manifest: a package added to peerDependencies
+  // without being listed here would go untested, and one dropped from the manifest
+  // has to fail loudly rather than take its own coverage down with it.
+  it('lists every peer exactly once', () => {
+    expect(Object.keys(manifest.peerDependencies).sort()).toEqual([...RUNTIME_PEERS, ...TOOLING_PEERS].sort());
+  });
+
+  it.each([...TOOLING_PEERS, ...RUNTIME_PEERS])('declares %s as a required peer so it lands at the app root', (pkg) => {
+    expect(manifest.peerDependencies?.[pkg]).toBeDefined();
+    expect(manifest.dependencies?.[pkg]).toBeUndefined();
+    // Optional peers are not auto-installed, which would defeat the point.
+    expect(manifest.peerDependenciesMeta?.[pkg]?.optional).not.toBe(true);
+  });
+
+  // Dependabot does not open PRs for peerDependency-only entries, so every shared
+  // package is declared twice and the devDependency is what actually gets bumped.
+  // If only one of the two moves, apps silently keep the old version: the peer is
+  // what they resolve against, and nothing else compares the pair.
+  it.each(RUNTIME_PEERS)('pins %s identically as a peer and a devDependency', (pkg) => {
+    expect(manifest.devDependencies?.[pkg]).toBe(manifest.peerDependencies?.[pkg]);
+  });
+
+  // Exact pins, not ranges: the point of centralising these is that one version is
+  // in force everywhere. A caret here would let five apps drift apart again.
+  it.each(RUNTIME_PEERS)('pins %s exactly', (pkg) => {
+    expect(manifest.peerDependencies?.[pkg]).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('runtime peers reach the app', () => {
+  // The mechanism this package relies on: npm installs REQUIRED peers into the
+  // consumer's own node_modules. The fixture declares none of these, so if they
+  // resolve there at all, they got there as peers.
+  //
+  // Resolving is not enough on its own — a copy nested under this package would
+  // still satisfy `require.resolve` from inside web-core while being invisible to
+  // the app's own imports and to TypeScript. web-todo's lockfile really does nest
+  // @vitejs/plugin-react that way, so this asserts the location, not just success.
+  const nested = path.join(fixture, 'node_modules/@gregor_herdmann/web-core/node_modules');
+
+  it.each(RUNTIME_PEERS)('resolves %s from the app root, not from inside web-core', (pkg) => {
+    const resolved = createRequire(path.join(fixture, 'noop.js')).resolve(`${pkg}/package.json`);
+    expect(resolved.startsWith(path.join(fixture, 'node_modules'))).toBe(true);
+    expect(resolved.startsWith(nested)).toBe(false);
+  });
+
+  it.each(RUNTIME_PEERS)('installs %s at the version this package pins', (pkg) => {
+    const resolved = createRequire(path.join(fixture, 'noop.js')).resolve(`${pkg}/package.json`);
+    expect(JSON.parse(readFileSync(resolved, 'utf8')).version).toBe(manifest.peerDependencies[pkg]);
+  });
 });
 
 describe('manualChunksFromMap', () => {

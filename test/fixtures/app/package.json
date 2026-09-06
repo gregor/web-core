@@ -4,12 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "prettier": "@gregor_herdmann/web-core/prettier",
-  "dependencies": {
-    "express": "5.2.1",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "react-router-dom": "7.18.2"
-  },
   "scripts": {
     "test": "web-core test"
   }

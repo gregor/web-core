@@ -1,11 +1,23 @@
 # @gregor_herdmann/web-core
 
-Shared build, lint and format toolchain for the `web-*` apps.
+Shared toolchain and runtime dependencies for the `web-*` apps.
 
 The point is **dependency consolidation**, not config sharing. The five apps used to
-each carry the same 18 tooling devDependencies at the same pins, so every Dependabot
-update was reviewed and merged five times. Those 18 now live here as regular
-`dependencies`, and each app carries one devDependency instead.
+each carry the same pins, so every Dependabot update was reviewed and merged five
+times. Two groups now live here instead:
+
+- **21 tooling packages**, as regular `dependencies`. Nothing in an app imports
+  these; they are reached through the `web-core` CLI, so transitive is enough.
+- **13 runtime packages**, as required `peerDependencies` — react, react-dom,
+  react-router-dom, lucide-react, date-fns, express, express-session, cors,
+  memorystore, googleapis, i18next, react-i18next and recharts.
+
+The distinction matters. App source really does `import 'react'`, so react has to be
+resolvable from the **app's own** `node_modules`, and there has to be exactly one
+copy of it. `dependencies` only land there by npm's best-effort hoisting, which is
+not a guarantee — web-todo's lockfile nests `@vitejs/plugin-react` under this
+package rather than hoisting it. npm installs _required_ peers at the consumer root
+by construction, so that is what the runtime group uses.
 
 ## Using it in an app
 
@@ -19,8 +31,21 @@ update was reviewed and merged five times. Those 18 now live here as regular
     "format": "web-core format",
   },
   "prettier": "@gregor_herdmann/web-core/prettier",
-  "devDependencies": { "@gregor_herdmann/web-core": "1.0.0" },
+  // A dependency, not a devDependency: peers of a devDependency are dropped by
+  // `npm ci --omit=dev`, which would take express down with them at runtime.
+  "dependencies": { "@gregor_herdmann/web-core": "2.0.0" },
 }
+```
+
+An app declares **none** of the 13 runtime packages and none of the tooling. Its own
+`dependencies` are only what is genuinely its own — `pdfkit`, `@dnd-kit/*`,
+`puppeteer-core` and the like.
+
+To deviate from a pin, use `overrides`. A plain direct dependency at a different
+version is an `ERESOLVE` failure against an exact peer, which is the point:
+
+```jsonc
+{ "overrides": { "date-fns": "4.5.0" } }
 ```
 
 ```js
@@ -81,6 +106,14 @@ test exists.
   would land in an app's `.bin` anyway. The wrapper makes resolution deterministic
   (and survives pnpm), which is also why ejecting is cheap.
 - **Consumers must not add `vite` back** as a direct dependency.
+- **Every runtime package is declared twice here**, at the same pin: once in
+  `peerDependencies` (what consumers resolve against) and once in `devDependencies`
+  (what Dependabot bumps, since it does not open PRs for peer-only entries). The
+  suite fails if the two drift; `npm run sync-peers` is the fix. A peer with no
+  matching devDependency never gets bumped at all — which is what happened to
+  `@testing-library/react`.
+- **Nothing in `peerDependenciesMeta` may be optional.** Optional peers are not
+  auto-installed, so an app would end up with no react at all.
 
 ## Releasing
 
@@ -99,9 +132,11 @@ with `GITHUB_TOKEN` do not trigger the app's CI.
 
 ## Ejecting
 
-Add the 18 pins back to the app (they are listed in this package's `dependencies`),
-restore the config files from the app's `pre-web-core` tag, and revert the scripts.
-Around 15 mechanical minutes per repo, and the app keeps working mid-eject.
+Add the pins back to the app — the tooling ones are listed in this package's
+`dependencies`, the runtime ones in its `peerDependencies` — restore the config
+files from the app's `pre-web-core` tag, and revert the scripts. Around 15
+mechanical minutes per repo, and the app keeps working mid-eject: re-declaring a
+package at the version it is already resolving to changes nothing about the tree.
 
 ## Tests
 

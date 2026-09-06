@@ -38,7 +38,14 @@ export function defineAppConfig(options = {}) {
 
   const base = defineConfig({
     plugins: [react(), tailwindcss()],
-    resolve: { alias: { '@': path.resolve(root, './src') } },
+    resolve: {
+      alias: { '@': path.resolve(root, './src') },
+      // react and react-dom are required peers, so npm places one copy at the app
+      // root and this should never have anything to do. It is insurance: two React
+      // instances fail as "invalid hook call" from inside a component, which points
+      // at the component rather than at the resolution that actually broke.
+      dedupe: ['react', 'react-dom'],
+    },
     build: chunks
       ? {
           rollupOptions: {
