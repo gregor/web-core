@@ -64,6 +64,16 @@ export function defineAppConfig(options = {}) {
       // where an absolute path outside the project root is refused by vite's fs
       // allowlist.
       setupFiles: ['@gregor_herdmann/web-core/vitest-setup'],
+      // Vitest 5 narrowed its default exclude to node_modules and .git — earlier
+      // versions also skipped build output. Without this, `tsconfig.server.json`
+      // emitting a test file into dist/ means the suite runs the compiled copy
+      // alongside the source: the same test twice, and the stale one can fail on
+      // its own long after the source was fixed. `.claude/` carries the same risk
+      // through the worktrees Claude Code checks out inside the repo.
+      //
+      // The first two restate vitest's own defaults, which naming `exclude`
+      // replaces rather than extends.
+      exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/.claude/**', '**/coverage/**'],
       css: false,
       coverage: {
         provider: 'v8',
