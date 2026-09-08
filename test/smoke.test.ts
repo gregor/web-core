@@ -266,6 +266,31 @@ describe('test runner', () => {
     expect(webCore(['test'], dir).code).toBe(0);
   });
 
+  it('ignores a test that only exists in build output', () => {
+    // tsconfig.server.json emits into dist/, so a server test lands there compiled.
+    // Vitest 5 no longer excludes build output by default, and running the copy
+    // means every server test runs twice — the stale one able to fail on its own.
+    const dir = scratchFixture();
+    mkdirSync(path.join(dir, 'dist/server'), { recursive: true });
+    writeFileSync(
+      path.join(dir, 'dist/server/stale.test.js'),
+      "import { expect, it } from 'vitest';\nit('stale', () => expect(1).toBe(2));\n",
+    );
+    expect(webCore(['test'], dir).code).toBe(0);
+  });
+
+  it('ignores tests inside a worktree checked out in the repo', () => {
+    // Claude Code puts worktrees under .claude/worktrees/, each a full copy of the
+    // app — including its tests, at whatever revision that branch is on.
+    const dir = scratchFixture();
+    mkdirSync(path.join(dir, '.claude/worktrees/wip/src'), { recursive: true });
+    writeFileSync(
+      path.join(dir, '.claude/worktrees/wip/src/wip.test.ts'),
+      "import { expect, it } from 'vitest';\nit('wip', () => expect(1).toBe(2));\n",
+    );
+    expect(webCore(['test'], dir).code).toBe(0);
+  });
+
   it('collects coverage', () => {
     const dir = scratchFixture();
     expect(webCore(['test:coverage'], dir).code).toBe(0);
