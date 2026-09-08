@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        repo: [web-budget, web-dashboard, web-freelance, web-immo, web-todo]
+        repo: [web-budget, web-dashboard, web-freelance, web-immo, web-portfolio, web-todo]
     steps:
       # npm publish returns before the registry CDN serves the new version, so a
       # dispatch fired immediately makes consumers fail with ETARGET. Wait until the
