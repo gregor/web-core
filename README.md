@@ -122,11 +122,11 @@ npm version minor && git push --follow-tags
 ```
 
 The tag triggers publish to npm with provenance, then a `repository_dispatch` fan-out
-that opens a bump PR in all five apps. Releases are deliberately manual: Dependabot
+that opens a bump PR in all seven apps. Releases are deliberately manual: Dependabot
 auto-merges patch and minor bumps _into main_ here, but never publishes.
 
 Required secrets: `NPM_TOKEN` (granular, read-write on `@gregor_herdmann/*`) and
-`FANOUT_TOKEN` (fine-grained PAT with Contents + Pull requests write on the five app
+`FANOUT_TOKEN` (fine-grained PAT with Contents + Pull requests write on the seven app
 repos). The fan-out must use a PAT rather than `GITHUB_TOKEN`, because pushes made
 with `GITHUB_TOKEN` do not trigger the app's CI.
 
