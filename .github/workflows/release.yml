@@ -94,7 +94,7 @@ jobs:
 
   fan-out:
     needs: publish
-    # Prereleases are for piloting; they must not open bump PRs in all five apps.
+    # Prereleases are for piloting; they must not open bump PRs in all seven apps.
     #
     # Majors are excluded for a subtler reason. The fan-out only bumps a version
     # string, and a major means the consumer contract broke — by definition that is
@@ -106,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        repo: [web-budget, web-dashboard, web-freelance, web-immo, web-portfolio, web-todo]
+        repo: [web-budget, web-dashboard, web-freelance, web-immo, web-portfolio, web-todo, web-wishlist]
     steps:
       # npm publish returns before the registry CDN serves the new version, so a
       # dispatch fired immediately makes consumers fail with ETARGET. Wait until the
