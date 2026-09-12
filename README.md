@@ -130,6 +130,12 @@ Required secrets: `NPM_TOKEN` (granular, read-write on `@gregor_herdmann/*`) and
 repos). The fan-out must use a PAT rather than `GITHUB_TOKEN`, because pushes made
 with `GITHUB_TOKEN` do not trigger the app's CI.
 
+`scripts/rotate-fanout-token.sh` distributes a newly minted `FANOUT_TOKEN` to this repo
+and to every app in the fan-out matrix, which it reads out of `release.yml` so the list
+cannot drift. `--check` reports where the secret is set without changing anything, and
+`--dry-run` prints what a real run would do. Granting the PAT its repository access
+stays manual — the REST API does not expose it.
+
 ## Ejecting
 
 Add the pins back to the app — the tooling ones are listed in this package's
