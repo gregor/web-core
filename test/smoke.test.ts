@@ -197,7 +197,30 @@ describe('build', () => {
     // build inside node_modules/@gregor_herdmann/web-core.
     expect(existsSync(path.join(fixture, 'dist/server/index.js'))).toBe(true);
   });
+
+  it('generates the classes of the shared components through ui.css', () => {
+    // w-72 appears nowhere in the fixture's own source, only in the compiled
+    // AppSwitcher, so it can only have been picked up through ui.css's @source.
+    expect(builtCss(fixture)).toMatch(/\.w-72\s*\{/);
+  });
+
+  it('does not generate them without the ui.css import', () => {
+    // The negative case: proves the class above came from @source, and not from
+    // Tailwind scanning node_modules on its own after all.
+    const dir = scratchFixture();
+    writeFileSync(path.join(dir, 'src/index.css'), "@import 'tailwindcss';\n");
+    expect(webCore(['build:frontend'], dir).code).toBe(0);
+    expect(builtCss(dir)).not.toMatch(/\.w-72\s*\{/);
+  });
 });
+
+function builtCss(dir: string) {
+  const assets = path.join(dir, 'dist/assets');
+  return readdirSync(assets)
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => readFileSync(path.join(assets, f), 'utf8'))
+    .join('\n');
+}
 
 describe('typecheck', () => {
   it('passes on the clean fixture', () => {

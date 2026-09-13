@@ -20,4 +20,10 @@ export default [
     },
   },
   ...shared,
+  {
+    // TypeScript already rejects undefined names, and the globals list above is
+    // Node's: the DOM types and globals ui/ uses would each need listing by hand.
+    files: ['**/*.{ts,tsx}'],
+    rules: { 'no-undef': 'off' },
+  },
 ];
