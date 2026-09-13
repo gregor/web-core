@@ -96,6 +96,34 @@ import { render, screen } from '@testing-library/react';
 carries a test script, and `--passWithNoTests` keeps that honest before the first
 test exists.
 
+## Shared UI
+
+`@gregor_herdmann/web-core/ui` exports `AppSwitcher`, which replaces the icon and name at
+the top of each app's sidebar. Hovering shows a chevron, and clicking opens a menu that
+links to every other app.
+
+```tsx
+// src/components/Sidebar.tsx
+import { AppSwitcher } from '@gregor_herdmann/web-core/ui';
+
+<AppSwitcher current="budget" icon={<WalletIcon />} label={t('app.title')} collapsed={collapsed} />;
+```
+
+```css
+/* src/index.css — directly below @import 'tailwindcss' */
+@import '@gregor_herdmann/web-core/ui.css';
+```
+
+**Without that CSS import the menu renders unstyled.** Tailwind never scans
+`node_modules`, and `ui.css` is just an `@source` pointing at the compiled components.
+The switcher uses only `slate-*`, `accent-*` and `dark:` classes, so it picks up each
+app's own accent palette and dark mode.
+
+The app URLs live in `ui/apps.ts`, and nowhere else. To add or move an app, edit that
+file and release. The fan-out then carries the change to every app. Components are
+written in TSX and compiled into `dist/ui` by `npm run build`, which `prepack` runs, so
+the published package and the test fixture always get fresh output.
+
 ## Things that will bite you
 
 - **`paths`, `include`, `outDir` and `rootDir` must stay in each app's tsconfig.**

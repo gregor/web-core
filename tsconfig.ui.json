@@ -1,0 +1,12 @@
+{
+  "$comment": "Compiles the shared components into dist/ui at pack time. Apps consume the JS and .d.ts, never the TSX: their tsc would otherwise type-check this source under their own settings, and their Tailwind would have to scan it.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "rootDir": "ui",
+    "outDir": "dist/ui"
+  },
+  "include": ["ui"]
+}

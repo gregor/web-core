@@ -17,6 +17,7 @@
   "files": [
     "bin",
     "config",
+    "dist",
     "lib",
     "tsconfig.base.json",
     "tsconfig.server.base.json"
@@ -29,14 +30,21 @@
     "./tsconfig.server.base.json": "./tsconfig.server.base.json",
     "./package.json": "./package.json",
     "./client": "./config/client.d.ts",
-    "./vitest-setup": "./config/vitest-setup.js"
+    "./vitest-setup": "./config/vitest-setup.js",
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "default": "./dist/ui/index.js"
+    },
+    "./ui.css": "./config/ui.css"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.ui.json",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "lint": "eslint .",
     "sync-peers": "node scripts/sync-peers.mjs",
-    "test": "node test/prepare-fixture.mjs && vitest run"
+    "test": "node test/prepare-fixture.mjs && vitest run",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@tailwindcss/vite": "4.3.3",

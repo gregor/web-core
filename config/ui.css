@@ -1,0 +1,9 @@
+/*
+ * Tailwind never scans node_modules, so the classes web-core's components use would
+ * not be generated in the app that renders them. Import this right after
+ * `@import 'tailwindcss';` in the app's stylesheet.
+ *
+ * @source resolves relative to the file that declares it, so this points at the
+ * compiled components wherever web-core is installed.
+ */
+@source '../dist/ui';
