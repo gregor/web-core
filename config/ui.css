@@ -7,3 +7,23 @@
  * compiled components wherever web-core is installed.
  */
 @source '../dist/ui';
+
+/*
+ * Tailwind v4's preflight resets buttons to `cursor: default`. Without this, every
+ * clickable element needs its own `cursor-pointer`, and each one that is forgotten
+ * ships as a bug. A utility class on an element still wins over this base layer.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  select:not(:disabled),
+  summary,
+  label:has(> input[type='checkbox'], > input[type='radio']) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
