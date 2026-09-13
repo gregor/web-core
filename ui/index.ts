@@ -8,6 +8,13 @@ export {
   type ButtonVariant,
   type IconButtonProps,
 } from './Button.js';
+export {
+  Dropdown,
+  MultiDropdown,
+  type DropdownOption,
+  type DropdownProps,
+  type MultiDropdownProps,
+} from './Dropdown.js';
 export { Field, Input, Select, Textarea, inputClass, type FieldProps } from './Field.js';
 export {
   Badge,

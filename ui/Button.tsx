@@ -72,17 +72,31 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   /** Required: an icon-only button has no other accessible name. Also shown as the tooltip. */
   label: string;
   icon: ReactNode;
+  /** `danger` turns the hover red, for delete actions. */
+  tone?: 'default' | 'danger';
   ref?: Ref<HTMLButtonElement>;
 }
 
+const iconTones = {
+  default: 'hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200',
+  danger: 'hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20 dark:hover:text-rose-400',
+};
+
 /** A square, icon-only button, e.g. edit/delete in a table row or a dialog's close ×. */
-export function IconButton({ label, icon, type = 'button', className = '', ...rest }: IconButtonProps) {
+export function IconButton({
+  label,
+  icon,
+  tone = 'default',
+  type = 'button',
+  className = '',
+  ...rest
+}: IconButtonProps) {
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
-      className={`inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors cursor-pointer hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700 dark:hover:text-slate-200 ${className}`}
+      className={`inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${iconTones[tone]} ${className}`}
       {...rest}
     >
       {icon}
