@@ -26,7 +26,16 @@ interface PopoverPosition {
 }
 
 const triggerBase =
-  'inline-flex items-center gap-2 min-w-36 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-3 py-2 text-sm text-left text-slate-700 dark:text-slate-200 transition-colors cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 outline-none focus-visible:border-accent-500 focus-visible:ring-2 focus-visible:ring-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 pl-3 py-2 text-sm text-left text-slate-700 dark:text-slate-200 transition-colors cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 outline-none focus-visible:border-accent-500 focus-visible:ring-2 focus-visible:ring-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50';
+
+/**
+ * The wrapper's default width, dropped as soon as the caller sets one. Both on the same
+ * element would conflict, and Tailwind's output order, not the class order, decides
+ * which wins; a trigger-side min-width could not be overridden at all.
+ */
+function widthClass(className: string) {
+  return /(^|\s)(min-)?w-/.test(className) ? className : `min-w-36 ${className}`;
+}
 
 const optionBase = 'w-full flex items-center gap-2 px-3 py-2 text-sm text-left cursor-pointer outline-none';
 
@@ -199,7 +208,7 @@ export interface DropdownProps<T extends string> {
   /** Adds a × that resets the value to '' — its accessible name, e.g. "Filter entfernen". */
   clearLabel?: string;
   disabled?: boolean;
-  /** Classes on the wrapper, for width: `w-full`, `w-40`. */
+  /** Classes on the wrapper. A width (`w-full`, `w-40`, `min-w-0`) replaces the default `min-w-36`. */
   className?: string;
   /** Accessible name of the trigger when there is no visible label next to it. */
   'aria-label'?: string;
@@ -245,7 +254,7 @@ export function Dropdown<T extends string>({
   }
 
   return (
-    <div ref={wrapperRef} className={`relative inline-block ${className}`}>
+    <div ref={wrapperRef} className={`relative inline-block ${widthClass(className)}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -315,7 +324,7 @@ export interface MultiDropdownProps<T extends string> {
   /** Shown in the list when there are no options. */
   emptyLabel?: string;
   disabled?: boolean;
-  /** Classes on the wrapper, for width. */
+  /** Classes on the wrapper. A width (`w-full`, `w-40`, `min-w-0`) replaces the default `min-w-36`. */
   className?: string;
 }
 
@@ -351,7 +360,7 @@ export function MultiDropdown<T extends string>({
   }
 
   return (
-    <div ref={wrapperRef} className={`relative inline-block ${className}`}>
+    <div ref={wrapperRef} className={`relative inline-block ${widthClass(className)}`}>
       <button
         ref={triggerRef}
         type="button"

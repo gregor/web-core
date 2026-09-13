@@ -402,3 +402,16 @@ describe('MultiDropdown', () => {
     expect(screen.queryByRole('button', { name: 'Filter entfernen' })).not.toBeInTheDocument();
   });
 });
+
+describe('Dropdown width', () => {
+  it('has a default min width that a caller-set width replaces', () => {
+    const { container, rerender } = render(
+      <Dropdown options={FRUIT} value="" onChange={() => {}} placeholder="Obst" />,
+    );
+    expect(container.firstChild).toHaveClass('min-w-36');
+    rerender(<Dropdown options={FRUIT} value="" onChange={() => {}} placeholder="Obst" className="w-full" />);
+    expect(container.firstChild).toHaveClass('w-full');
+    expect(container.firstChild).not.toHaveClass('min-w-36');
+    expect(screen.getByRole('button', { name: 'Obst' })).not.toHaveClass('min-w-36');
+  });
+});
