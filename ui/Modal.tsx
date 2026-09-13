@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react';
 import { X } from 'lucide-react';
 import { IconButton } from './Button.js';
 
@@ -12,6 +12,8 @@ export interface ModalProps {
   /** Right-aligned action row below the body, typically Cancel + Save buttons. */
   footer?: ReactNode;
   size?: 'md' | 'lg' | 'xl';
+  /** Focus this instead of the first field on open, e.g. Cancel in a delete confirmation. */
+  initialFocus?: RefObject<HTMLElement | null>;
 }
 
 const widths = { md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
@@ -24,14 +26,16 @@ const FOCUSABLE =
  * backdrop. On open, focus moves to the first field (or the panel) and Tab is kept
  * inside; on close, focus goes back to whatever opened it.
  */
-export function Modal({ open, onClose, title, closeLabel, children, footer, size = 'md' }: ModalProps) {
+export function Modal({ open, onClose, title, closeLabel, children, footer, size = 'md', initialFocus }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   // Held in a ref so a parent re-rendering with a new inline onClose doesn't re-run
   // the effect below, which would steal focus back to the first field mid-typing.
   const onCloseRef = useRef(onClose);
+  const initialFocusRef = useRef(initialFocus);
   useEffect(() => {
     onCloseRef.current = onClose;
+    initialFocusRef.current = initialFocus;
   });
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export function Modal({ open, onClose, title, closeLabel, children, footer, size
     const panel = panelRef.current!;
     // Skip the × in the header: landing on the first field is what the user wants.
     const first = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].find((el) => !el.dataset.modalClose);
-    (first ?? panel).focus();
+    (initialFocusRef.current?.current ?? first ?? panel).focus();
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {

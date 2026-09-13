@@ -1,2 +1,6 @@
 @import 'tailwindcss';
 @import '@gregor_herdmann/web-core/ui.css';
+
+@utility ease-sidebar {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

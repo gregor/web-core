@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, renderHook, act, screen } from '@testing-library/react';
+import { cleanup, render, renderHook, act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { Check } from 'lucide-react';
 import {
+  AppShell,
   Button,
+  ConfirmProvider,
+  EnvCheckGate,
+  GoogleConnectGate,
+  PasswordGate,
+  useConfirm,
   Dropdown,
   Field,
   IconButton,
@@ -413,5 +421,310 @@ describe('Dropdown width', () => {
     expect(container.firstChild).toHaveClass('w-full');
     expect(container.firstChild).not.toHaveClass('min-w-36');
     expect(screen.getByRole('button', { name: 'Obst' })).not.toHaveClass('min-w-36');
+  });
+});
+
+const NAV = [
+  { to: '/', label: 'Übersicht', icon: Check },
+  { to: '/loans', label: 'Darlehen', icon: Check },
+] as const;
+
+const SHELL_LABELS = {
+  navigation: 'Hauptnavigation',
+  collapse: 'Einklappen',
+  expand: 'Ausklappen',
+  lightMode: 'Hellmodus',
+  darkMode: 'Dunkelmodus',
+};
+
+function shell(props: Partial<Parameters<typeof AppShell>[0]> = {}) {
+  return render(
+    <MemoryRouter initialEntries={['/loans']}>
+      <AppShell
+        app={{ id: 'immo', icon: <svg data-testid="brand" />, label: 'Immobilien' }}
+        nav={NAV}
+        settings={{ to: '/settings', label: 'Einstellungen', icon: Check }}
+        labels={SHELL_LABELS}
+        {...props}
+      >
+        <p>Seiteninhalt</p>
+      </AppShell>
+    </MemoryRouter>,
+  );
+}
+
+describe('AppShell', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('renders the brand, the nav and the page, and marks the active link', () => {
+    shell();
+    expect(screen.getByTestId('brand')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Hauptnavigation' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Darlehen' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Übersicht' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByText('Seiteninhalt')).toBeInTheDocument();
+  });
+
+  it('collapses, hides the labels and remembers it', async () => {
+    const user = userEvent.setup();
+    const { unmount } = shell({ storageKey: 'wi_sidebar_collapsed' });
+    await user.click(screen.getByRole('button', { name: 'Einklappen' }));
+    expect(screen.getByRole('button', { name: 'Ausklappen' })).toHaveAttribute('aria-expanded', 'false');
+    // The link keeps its name through aria-label once the text is hidden.
+    expect(screen.getByRole('link', { name: 'Darlehen' })).toBeInTheDocument();
+    expect(localStorage.getItem('wi_sidebar_collapsed')).toBe('true');
+
+    unmount();
+    shell({ storageKey: 'wi_sidebar_collapsed' });
+    expect(screen.getByRole('button', { name: 'Ausklappen' })).toBeInTheDocument();
+  });
+
+  it('hands the collapsed state to the top and footer slots', async () => {
+    const user = userEvent.setup();
+    shell({
+      top: (collapsed: boolean) => <button>{collapsed ? '+' : 'Neuer Eintrag'}</button>,
+      footer: (collapsed: boolean) => <p>{collapsed ? 'P' : 'Profil'}</p>,
+    });
+    expect(screen.getByRole('button', { name: 'Neuer Eintrag' })).toBeInTheDocument();
+    expect(screen.getByText('Profil')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Einklappen' }));
+    expect(screen.getByRole('button', { name: '+' })).toBeInTheDocument();
+    expect(screen.getByText('P')).toBeInTheDocument();
+  });
+
+  it('toggles dark mode on the document', async () => {
+    const user = userEvent.setup();
+    shell();
+    const before = document.documentElement.classList.contains('dark');
+    await user.click(screen.getByRole('button', { name: before ? 'Hellmodus' : 'Dunkelmodus' }));
+    expect(document.documentElement.classList.contains('dark')).toBe(!before);
+  });
+});
+
+const PASSWORD_LABELS = {
+  title: 'Anmelden',
+  password: 'Passwort',
+  submit: 'Anmelden',
+  wrong: 'Falsches Passwort.',
+  unreachable: 'Server nicht erreichbar.',
+  showPassword: 'Passwort anzeigen',
+  hidePassword: 'Passwort verbergen',
+};
+
+/** Answers the gate's endpoints; every other URL rejects. */
+function mockFetch(routes: Record<string, { ok?: boolean; body?: unknown }>) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
+    const route = Object.entries(routes).find(([path]) => url.startsWith(path))?.[1];
+    if (!route) return Promise.reject(new Error(`unexpected fetch: ${url}`));
+    return Promise.resolve({
+      ok: route.ok ?? true,
+      json: () => Promise.resolve(route.body ?? {}),
+    } as Response);
+  });
+}
+
+describe('PasswordGate', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('renders the app when the session says authenticated', async () => {
+    mockFetch({ '/api/auth/me': { body: { authenticated: true } } });
+    render(<PasswordGate labels={PASSWORD_LABELS}>geheim</PasswordGate>);
+    expect(await screen.findByText('geheim')).toBeInTheDocument();
+  });
+
+  it('passes the role to function children', async () => {
+    mockFetch({ '/api/auth/me': { body: { role: 'gregor' } } });
+    render(<PasswordGate labels={PASSWORD_LABELS}>{(me) => <p>Rolle: {String(me.role)}</p>}</PasswordGate>);
+    expect(await screen.findByText('Rolle: gregor')).toBeInTheDocument();
+  });
+
+  it('signs in with the right password and complains about a wrong one', async () => {
+    const user = userEvent.setup();
+    mockFetch({ '/api/auth/me': { body: { role: null } }, '/api/auth/login': { ok: false } });
+    render(<PasswordGate labels={PASSWORD_LABELS}>geheim</PasswordGate>);
+
+    const field = await screen.findByLabelText('Passwort');
+    await user.type(field, 'falsch');
+    await user.click(screen.getByRole('button', { name: 'Anmelden' }));
+    expect(await screen.findByText('Falsches Passwort.')).toBeInTheDocument();
+    expect(screen.queryByText('geheim')).not.toBeInTheDocument();
+
+    mockFetch({ '/api/auth/login': { body: { role: 'couple' } } });
+    await user.click(screen.getByRole('button', { name: 'Anmelden' }));
+    expect(await screen.findByText('geheim')).toBeInTheDocument();
+  });
+
+  it('can reveal the password, and the toggle has a name', async () => {
+    const user = userEvent.setup();
+    mockFetch({ '/api/auth/me': { body: {} } });
+    render(<PasswordGate labels={PASSWORD_LABELS}>geheim</PasswordGate>);
+    const field = await screen.findByLabelText('Passwort');
+    expect(field).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: 'Passwort anzeigen' }));
+    expect(field).toHaveAttribute('type', 'text');
+  });
+});
+
+const GOOGLE_LABELS = {
+  subtitle: 'Mit Google verbinden',
+  connect: 'Mit Google verbinden',
+  setupToggle: 'Einrichtung',
+  setupTitle: 'Anleitung',
+  consoleLink: 'Google Cloud Console',
+  configErrorTitle: 'Konfigurationsfehler',
+  configErrorBody: 'Diese Variablen fehlen:',
+  configErrorHint: 'Nach dem Setzen den Server neu starten.',
+};
+
+describe('GoogleConnectGate', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const gate = (extra = {}) => (
+    <GoogleConnectGate
+      app={{ icon: <svg />, title: 'Immobilien' }}
+      connectHref="/api/auth"
+      labels={GOOGLE_LABELS}
+      setupSteps={['Projekt anlegen', 'API aktivieren']}
+      {...extra}
+    >
+      <p>verbunden</p>
+    </GoogleConnectGate>
+  );
+
+  it('renders the app once connected', async () => {
+    mockFetch({ '/api/auth/status': { body: { connected: true, credentialsConfigured: true } } });
+    render(gate());
+    expect(await screen.findByText('verbunden')).toBeInTheDocument();
+  });
+
+  it('offers the connect button and the setup steps', async () => {
+    const user = userEvent.setup();
+    mockFetch({ '/api/auth/status': { body: { connected: false, credentialsConfigured: true } } });
+    render(gate());
+    expect(await screen.findByRole('button', { name: /Mit Google verbinden/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Einrichtung' }));
+    expect(screen.getByText('Projekt anlegen')).toBeInTheDocument();
+  });
+
+  it('names the missing variables, including app-specific ones', async () => {
+    mockFetch({
+      '/api/auth/status': { body: { connected: false, credentialsConfigured: false, sheetConfigured: false } },
+    });
+    render(
+      gate({
+        requiredVars: (s: { credentialsConfigured: boolean; sheetConfigured?: boolean }) =>
+          [!s.credentialsConfigured && 'GOOGLE_CREDENTIALS_JSON', !s.sheetConfigured && 'GSHEET_ID'].filter(
+            Boolean,
+          ) as string[],
+      }),
+    );
+    expect(await screen.findByText('Konfigurationsfehler')).toBeInTheDocument();
+    expect(screen.getByText('GOOGLE_CREDENTIALS_JSON')).toBeInTheDocument();
+    expect(screen.getByText('GSHEET_ID')).toBeInTheDocument();
+  });
+});
+
+const ENV_LABELS = {
+  title: 'Konfigurationsfehler',
+  body: 'Die App kann nicht starten.',
+  hint: 'Server neu starten.',
+  missing: 'Fehlt',
+  invalid: 'Ungültig',
+  warn: 'Warnung',
+  ok: 'OK',
+};
+
+describe('EnvCheckGate', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('renders the app when the check passes', async () => {
+    mockFetch({ '/api/env-check': { body: { ok: true, checks: [] } } });
+    render(<EnvCheckGate labels={ENV_LABELS}>läuft</EnvCheckGate>);
+    expect(await screen.findByText('läuft')).toBeInTheDocument();
+  });
+
+  it('lists the failing variables and their messages', async () => {
+    mockFetch({
+      '/api/env-check': {
+        body: {
+          ok: false,
+          checks: [
+            { key: 'AUTH_SECRET', status: 'missing', message: 'Passwort für den Login' },
+            { key: 'SESSION_SECRET', status: 'warn' },
+          ],
+        },
+      },
+    });
+    render(<EnvCheckGate labels={ENV_LABELS}>läuft</EnvCheckGate>);
+    expect(await screen.findByText('AUTH_SECRET')).toBeInTheDocument();
+    expect(screen.getByText('Passwort für den Login')).toBeInTheDocument();
+    expect(screen.getByText('Fehlt')).toBeInTheDocument();
+    expect(screen.getByText('Warnung')).toBeInTheDocument();
+    expect(screen.queryByText('läuft')).not.toBeInTheDocument();
+  });
+
+  it('lets the app through when the server cannot be reached', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'));
+    render(<EnvCheckGate labels={ENV_LABELS}>läuft</EnvCheckGate>);
+    expect(await screen.findByText('läuft')).toBeInTheDocument();
+  });
+});
+
+function ConfirmHarness({ options }: { options?: Partial<Parameters<ReturnType<typeof useConfirm>>[0]> }) {
+  const confirm = useConfirm();
+  const [result, setResult] = useState('—');
+  return (
+    <>
+      <button
+        onClick={() =>
+          void confirm({ title: 'Eintrag löschen?', danger: true, ...options }).then((ok) => setResult(String(ok)))
+        }
+      >
+        Löschen
+      </button>
+      <output>{result}</output>
+    </>
+  );
+}
+
+const withProvider = (ui: ReactNode) => (
+  <ConfirmProvider labels={{ confirm: 'Löschen', cancel: 'Abbrechen', close: 'Schließen' }}>{ui}</ConfirmProvider>
+);
+
+describe('useConfirm', () => {
+  it('resolves true only when confirmed, and focuses Cancel', async () => {
+    const user = userEvent.setup();
+    render(withProvider(<ConfirmHarness options={{ message: 'Das kann nicht rückgängig gemacht werden.' }} />));
+    await user.click(screen.getByRole('button', { name: 'Löschen' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Eintrag löschen?' });
+    expect(within(dialog).getByText('Das kann nicht rückgängig gemacht werden.')).toBeInTheDocument();
+    // Enter must not delete: focus sits on Cancel, not on the red button.
+    expect(within(dialog).getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
+
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('status')).toHaveTextContent('false');
+
+    await user.click(screen.getByRole('button', { name: 'Löschen' }));
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Löschen' }));
+    expect(screen.getByRole('status')).toHaveTextContent('true');
+  });
+
+  it('resolves false on Escape', async () => {
+    const user = userEvent.setup();
+    render(withProvider(<ConfirmHarness />));
+    await user.click(screen.getByRole('button', { name: 'Löschen' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('false');
+  });
+
+  it('uses per-call labels and the danger variant', async () => {
+    const user = userEvent.setup();
+    render(withProvider(<ConfirmHarness options={{ confirmLabel: 'Trotzdem exportieren', danger: false }} />));
+    await user.click(screen.getByRole('button', { name: 'Löschen' }));
+    const button = screen.getByRole('button', { name: 'Trotzdem exportieren' });
+    expect(button).toHaveClass('bg-accent-600');
   });
 });

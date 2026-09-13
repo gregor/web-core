@@ -1,3 +1,4 @@
+export { AppShell, navLinkClass, type AppShellProps, type NavItem } from './AppShell.js';
 export { AppSwitcher, type AppSwitcherProps } from './AppSwitcher.js';
 export { APPS, type AppEntry, type AppId } from './apps.js';
 export {
@@ -27,6 +28,19 @@ export {
   type PageHeaderProps,
   type StatCardProps,
 } from './layout.js';
+export { ConfirmProvider, useConfirm, type ConfirmLabels, type ConfirmOptions } from './confirm.js';
+export {
+  EnvCheckGate,
+  GoogleConnectGate,
+  GoogleIcon,
+  PasswordGate,
+  type AuthMe,
+  type EnvCheckGateProps,
+  type EnvCheckItem,
+  type GoogleConnectGateProps,
+  type GoogleStatus,
+  type PasswordGateProps,
+} from './gates.js';
 export { Modal, type ModalProps } from './Modal.js';
 export {
   SortableTh,
@@ -38,5 +52,6 @@ export {
   type SortableThProps,
   type UseSortOptions,
 } from './sort.js';
+export { DarkModeContext, useDarkMode, useIsDark } from './theme.js';
 export { ThemeToggle, type ThemeToggleProps } from './ThemeToggle.js';
 export { formatDateDE, formatEUR, formatNumber } from './format.js';
