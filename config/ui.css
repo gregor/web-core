@@ -27,3 +27,11 @@
     cursor: not-allowed;
   }
 }
+
+/*
+ * The sidebar's collapse/expand easing, used by AppShell. Defined here so the shell
+ * works in an app that has not declared it, and so all seven apps share one curve.
+ */
+@utility ease-sidebar {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

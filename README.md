@@ -102,6 +102,10 @@ test exists.
 
 | Export                                                                  | What it is                                                                                                                                                                                                                                                   |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AppShell`                                                              | The whole layout: collapsible sidebar (brand, nav, settings, theme toggle, collapse), `<main>`, and the dark-mode state. `top`/`footer` slots take app-specific sidebar content; `storageKey` remembers the collapse. Must sit inside the router             |
+| `PasswordGate`, `GoogleConnectGate`, `EnvCheckGate`                     | The login and setup screens, against the existing `/api/auth/me`, `/api/auth/login`, `/api/auth/status` and `/api/env-check`. `PasswordGate` children may be a function receiving the `me` body, for apps with roles                                         |
+| `ConfirmProvider`, `useConfirm`                                         | `if (!(await confirm({ title, danger: true }))) return;` instead of `window.confirm`. Focus starts on Cancel, Escape cancels                                                                                                                                 |
+| `useDarkMode`, `useIsDark`, `DarkModeContext`                           | Follows the system scheme; the toggle overrides it for the session. `AppShell` already calls `useDarkMode`, so pages only need `useIsDark`                                                                                                                   |
 | `AppSwitcher`, `APPS`                                                   | Sidebar brand with a menu to the other apps; the app registry                                                                                                                                                                                                |
 | `Button`, `IconButton`                                                  | `variant` primary/secondary/ghost/danger, `size` sm/md, `icon`, `pending` (spinner, width kept). `type` defaults to `"button"`. `IconButton` requires `label`; `tone="danger"` for delete                                                                    |
 | `Field`, `Input`, `Select`, `Textarea`, `inputClass`                    | Label wrapping its control, and the input look                                                                                                                                                                                                               |
@@ -136,7 +140,7 @@ import { AppSwitcher } from '@gregor_herdmann/web-core/ui';
 
 **Without that CSS import the components render unstyled.** Tailwind never scans
 `node_modules`, and `ui.css` is an `@source` pointing at the compiled components. It
-also restores `cursor: pointer` on every enabled `button`, `[role=button]`, `select`,
+also defines the `ease-sidebar` utility `AppShell` animates with, and restores `cursor: pointer` on every enabled `button`, `[role=button]`, `select`,
 `summary` and checkbox label, which Tailwind v4's preflight resets to the default arrow.
 So a plain `<button>` needs no `cursor-pointer` class.
 

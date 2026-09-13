@@ -204,6 +204,9 @@ describe('build', () => {
     expect(builtCss(fixture)).toMatch(/\.w-72\s*\{/);
     // rounded-2xl: only the compiled Modal uses it.
     expect(builtCss(fixture)).toMatch(/\.rounded-2xl\s*\{/);
+    // w-56 and ease-sidebar come from AppShell, whose classes no fixture file spells out.
+    expect(builtCss(fixture)).toMatch(/\.w-56\s*\{/);
+    expect(builtCss(fixture)).toMatch(/\.ease-sidebar\s*\{/);
   });
 
   it('restores the pointer cursor on buttons through ui.css', () => {
