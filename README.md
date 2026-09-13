@@ -98,9 +98,28 @@ test exists.
 
 ## Shared UI
 
-`@gregor_herdmann/web-core/ui` exports `AppSwitcher`, which replaces the icon and name at
-the top of each app's sidebar. Hovering shows a chevron, and clicking opens a menu that
-links to every other app.
+`@gregor_herdmann/web-core/ui` holds the components every app draws the same way.
+
+| Export                                                                  | What it is                                                                                                                                                    |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AppSwitcher`, `APPS`                                                   | Sidebar brand with a menu to the other apps; the app registry                                                                                                 |
+| `Button`, `IconButton`                                                  | `variant` primary/secondary/ghost/danger, `size` sm/md, `icon`, `pending` (spinner, width kept). `type` defaults to `"button"`. `IconButton` requires `label` |
+| `Field`, `Input`, `Select`, `Textarea`, `inputClass`                    | Label wrapping its control, and the input look                                                                                                                |
+| `Card`, `StatCard`, `PageHeader`, `SectionTitle`, `EmptyState`, `Badge` | Page layout pieces                                                                                                                                            |
+| `Modal`                                                                 | Dialog with `title`, `closeLabel`, optional `footer` and `size`. Escape and backdrop close it, Tab stays inside, focus returns to the opener                  |
+| `SortableTh`, `useSort`, `compareValues`                                | Sortable column header (`aria-sort`); sort state with optional `storageKey`; a comparator with German collation and blanks last                               |
+| `ThemeToggle`                                                           | Sidebar light/dark switch with `lightLabel`/`darkLabel`                                                                                                       |
+| `formatEUR`, `formatNumber`, `formatDateDE`                             | Cached `de-DE` formatters                                                                                                                                     |
+
+Rules for what goes in here:
+
+- **Text comes in through props.** The apps are partly German, partly English, and
+  budget uses i18next, so no component hardcodes a word. Icon-only controls require a
+  label.
+- **Presentational only.** Domain dialogs, charts and badges stay in their app.
+- **`className` is appended, not merged.** Pass layout (`w-full`, margins), not colours.
+- **Only `slate-*`, `emerald`/`amber`/`rose`, `accent-*` and `dark:` classes**, so each
+  app's own palette and dark mode apply.
 
 ```tsx
 // src/components/Sidebar.tsx
@@ -114,10 +133,11 @@ import { AppSwitcher } from '@gregor_herdmann/web-core/ui';
 @import '@gregor_herdmann/web-core/ui.css';
 ```
 
-**Without that CSS import the menu renders unstyled.** Tailwind never scans
-`node_modules`, and `ui.css` is just an `@source` pointing at the compiled components.
-The switcher uses only `slate-*`, `accent-*` and `dark:` classes, so it picks up each
-app's own accent palette and dark mode.
+**Without that CSS import the components render unstyled.** Tailwind never scans
+`node_modules`, and `ui.css` is an `@source` pointing at the compiled components. It
+also restores `cursor: pointer` on every enabled `button`, `[role=button]`, `select`,
+`summary` and checkbox label, which Tailwind v4's preflight resets to the default arrow.
+So a plain `<button>` needs no `cursor-pointer` class.
 
 The app URLs live in `ui/apps.ts`, and nowhere else. To add or move an app, edit that
 file and release. The fan-out then carries the change to every app. Components are

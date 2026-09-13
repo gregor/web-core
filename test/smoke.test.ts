@@ -202,6 +202,14 @@ describe('build', () => {
     // w-72 appears nowhere in the fixture's own source, only in the compiled
     // AppSwitcher, so it can only have been picked up through ui.css's @source.
     expect(builtCss(fixture)).toMatch(/\.w-72\s*\{/);
+    // rounded-2xl: only the compiled Modal uses it.
+    expect(builtCss(fixture)).toMatch(/\.rounded-2xl\s*\{/);
+  });
+
+  it('restores the pointer cursor on buttons through ui.css', () => {
+    // Tailwind's preflight resets it to default; ui.css's base layer puts it back.
+    // `summary` only appears in that rule, so this can't be matched by a utility.
+    expect(builtCss(fixture)).toMatch(/summary[^{}]*\{\s*cursor:\s*pointer/);
   });
 
   it('does not generate them without the ui.css import', () => {
@@ -211,6 +219,7 @@ describe('build', () => {
     writeFileSync(path.join(dir, 'src/index.css'), "@import 'tailwindcss';\n");
     expect(webCore(['build:frontend'], dir).code).toBe(0);
     expect(builtCss(dir)).not.toMatch(/\.w-72\s*\{/);
+    expect(builtCss(dir)).not.toMatch(/summary[^{}]*\{\s*cursor:\s*pointer/);
   });
 });
 
