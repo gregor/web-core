@@ -6,10 +6,12 @@ import { cleanup, render, renderHook, act, screen } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import {
   Button,
+  Dropdown,
   Field,
   IconButton,
   Input,
   Modal,
+  MultiDropdown,
   SortableTh,
   ThemeToggle,
   compareValues,
@@ -252,5 +254,151 @@ describe('format', () => {
     expect(formatNumber(0.12345)).toBe('0,123');
     expect(formatDateDE('2026-09-03')).toBe('03.09.2026');
     expect(formatDateDE(new Date(2026, 11, 24))).toBe('24.12.2026');
+  });
+});
+
+describe('IconButton tone', () => {
+  it('turns the hover red for danger', () => {
+    render(<IconButton label="Löschen" icon={<svg />} tone="danger" />);
+    expect(screen.getByRole('button', { name: 'Löschen' })).toHaveClass('hover:text-rose-500');
+  });
+});
+
+describe('useSort firstDir', () => {
+  it('starts a column in the direction firstDir gives it', () => {
+    const firstDir = (key: string) => (key === 'amount' ? 'desc' : 'asc');
+    const { result } = renderHook(() => useSort<'name' | 'amount'>({ key: 'name', dir: 'asc' }, { firstDir }));
+    act(() => result.current.toggle('amount'));
+    expect(result.current.sort).toEqual({ key: 'amount', dir: 'desc' });
+    act(() => result.current.toggle('amount'));
+    expect(result.current.sort).toEqual({ key: 'amount', dir: 'asc' });
+    act(() => result.current.toggle('name'));
+    expect(result.current.sort).toEqual({ key: 'name', dir: 'asc' });
+  });
+});
+
+const FRUIT = [
+  { value: 'apple', label: 'Apfel' },
+  { value: 'pear', label: 'Birne' },
+  { value: 'plum', label: 'Pflaume' },
+] as const;
+
+function DropdownHarness({ clearLabel }: { clearLabel?: string }) {
+  const [value, setValue] = useState<'' | 'apple' | 'pear' | 'plum'>('');
+  return (
+    <>
+      <Dropdown options={FRUIT} value={value} onChange={setValue} placeholder="Obst" clearLabel={clearLabel} />
+      <output>{value}</output>
+    </>
+  );
+}
+
+describe('Dropdown', () => {
+  it('opens a listbox and picks an option by click', async () => {
+    const user = userEvent.setup();
+    render(<DropdownHarness />);
+    const trigger = screen.getByRole('button', { name: 'Obst' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'listbox');
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('option', { name: 'Birne' }));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('pear');
+    expect(trigger).toHaveTextContent('Birne');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('is operable by keyboard', async () => {
+    const user = userEvent.setup();
+    render(<DropdownHarness />);
+    screen.getByRole('button', { name: 'Obst' }).focus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+    expect(screen.getByRole('status')).toHaveTextContent('plum');
+  });
+
+  it('marks the selected option and clears through its own button', async () => {
+    const user = userEvent.setup();
+    render(<DropdownHarness clearLabel="Auswahl entfernen" />);
+    expect(screen.queryByRole('button', { name: 'Auswahl entfernen' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Obst' }));
+    await user.click(screen.getByRole('option', { name: 'Apfel' }));
+    await user.click(screen.getByRole('button', { name: 'Apfel' }));
+    expect(screen.getByRole('option', { name: 'Apfel' })).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Auswahl entfernen' }));
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('closes on Escape without closing the dialog around it', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open onClose={onClose} title="Dialog" closeLabel="Schließen">
+        <DropdownHarness />
+      </Modal>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Obst' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes on a click outside', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <DropdownHarness />
+        <p>draußen</p>
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Obst' }));
+    await user.click(screen.getByText('draußen'));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+});
+
+function MultiHarness({ summary }: { summary?: (n: number) => string }) {
+  const [selected, setSelected] = useState<Set<'apple' | 'pear' | 'plum'>>(new Set());
+  return (
+    <MultiDropdown
+      options={FRUIT}
+      selected={selected}
+      onChange={setSelected}
+      placeholder="Alle Sorten"
+      summary={summary}
+      clearLabel="Filter entfernen"
+    />
+  );
+}
+
+describe('MultiDropdown', () => {
+  it('toggles options and stays open', async () => {
+    const user = userEvent.setup();
+    render(<MultiHarness summary={(n) => `${n} Sorten`} />);
+    const trigger = screen.getByRole('button', { name: 'Alle Sorten' });
+    await user.click(trigger);
+    expect(screen.getByRole('listbox')).toHaveAttribute('aria-multiselectable', 'true');
+    await user.click(screen.getByRole('option', { name: 'Apfel' }));
+    expect(trigger).toHaveTextContent('Apfel');
+    await user.click(screen.getByRole('option', { name: 'Pflaume' }));
+    expect(trigger).toHaveTextContent('2 Sorten');
+    expect(screen.getByRole('option', { name: 'Pflaume' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(screen.getByRole('option', { name: 'Apfel' }));
+    expect(trigger).toHaveTextContent('Pflaume');
+  });
+
+  it('shows a count badge without a summary, and clears', async () => {
+    const user = userEvent.setup();
+    render(<MultiHarness />);
+    const trigger = screen.getByRole('button', { name: 'Alle Sorten' });
+    trigger.focus();
+    await user.keyboard('{ArrowDown}{Enter}{ArrowDown}{Enter}');
+    expect(trigger).toHaveTextContent('Alle Sorten2');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Filter entfernen' }));
+    expect(trigger).toHaveTextContent('Alle Sorten');
+    expect(screen.queryByRole('button', { name: 'Filter entfernen' })).not.toBeInTheDocument();
   });
 });

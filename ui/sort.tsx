@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 
 export type SortDirection = 'asc' | 'desc';
@@ -8,9 +8,17 @@ export interface SortState<K extends string> {
   dir: SortDirection;
 }
 
-/** Clicking the active column flips it; clicking another starts ascending. */
-export function nextSort<K extends string>(current: SortState<K>, key: K): SortState<K> {
-  if (current.key !== key) return { key, dir: 'asc' };
+/**
+ * Clicking the active column flips it; clicking another starts in `firstDir(key)`,
+ * ascending unless told otherwise (amounts and dates usually read best largest or
+ * newest first).
+ */
+export function nextSort<K extends string>(
+  current: SortState<K>,
+  key: K,
+  firstDir: (key: K) => SortDirection = () => 'asc',
+): SortState<K> {
+  if (current.key !== key) return { key, dir: firstDir(key) };
   return { key, dir: current.dir === 'asc' ? 'desc' : 'asc' };
 }
 
@@ -39,13 +47,18 @@ export interface UseSortOptions<K extends string> {
   storageKey?: string;
   /** The columns that exist, so a stored order for a removed column falls back to `initial`. */
   keys?: readonly K[];
+  /** The direction a column starts in when first clicked. Default: always ascending. */
+  firstDir?: (key: K) => SortDirection;
 }
 
 /**
  * Sort state for a table. Returns the current order, `toggle` for a header click,
  * and `thProps(key)` to spread onto a `<SortableTh>`.
  */
-export function useSort<K extends string>(initial: SortState<K>, { storageKey, keys }: UseSortOptions<K> = {}) {
+export function useSort<K extends string>(
+  initial: SortState<K>,
+  { storageKey, keys, firstDir }: UseSortOptions<K> = {},
+) {
   const [sort, setSort] = useState<SortState<K>>(() => {
     if (!storageKey) return initial;
     try {
@@ -57,10 +70,16 @@ export function useSort<K extends string>(initial: SortState<K>, { storageKey, k
     }
   });
 
+  // A ref, so an inline `firstDir` doesn't give `toggle` a new identity on every render.
+  const firstDirRef = useRef(firstDir);
+  useEffect(() => {
+    firstDirRef.current = firstDir;
+  });
+
   const toggle = useCallback(
     (key: K) => {
       setSort((current) => {
-        const next = nextSort(current, key);
+        const next = nextSort(current, key, firstDirRef.current);
         if (storageKey) {
           try {
             localStorage.setItem(storageKey, JSON.stringify(next));
