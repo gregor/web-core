@@ -68,12 +68,18 @@ export function Button({
   );
 }
 
+export type IconButtonSize = 'sm' | 'md';
+
 export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   /** Required: an icon-only button has no other accessible name. Also shown as the tooltip. */
   label: string;
   icon: ReactNode;
   /** `danger` turns the hover red, for delete actions. */
   tone?: 'default' | 'danger';
+  /** `sm` for dense table rows, where the default padding crowds the line. */
+  size?: IconButtonSize;
+  /** Disables the button and spins a loader in the icon's place, which keeps its box. */
+  pending?: boolean;
   ref?: Ref<HTMLButtonElement>;
 }
 
@@ -82,11 +88,19 @@ const iconTones = {
   danger: 'hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20 dark:hover:text-rose-400',
 };
 
+const iconSizes: Record<IconButtonSize, string> = {
+  sm: 'p-0.5',
+  md: 'p-1.5',
+};
+
 /** A square, icon-only button, e.g. edit/delete in a table row or a dialog's close ×. */
 export function IconButton({
   label,
   icon,
   tone = 'default',
+  size = 'md',
+  pending = false,
+  disabled,
   type = 'button',
   className = '',
   ...rest
@@ -96,10 +110,18 @@ export function IconButton({
       type={type}
       aria-label={label}
       title={label}
-      className={`inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${iconTones[tone]} ${className}`}
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      className={`relative inline-flex items-center justify-center rounded-lg text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${iconSizes[size]} ${iconTones[tone]} ${className}`}
       {...rest}
     >
-      {icon}
+      {/* The icon keeps its space while pending, so the row never shifts. */}
+      <span className={pending ? 'invisible' : undefined}>{icon}</span>
+      {pending && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Loader2 size={size === 'sm' ? 12 : 14} className="animate-spin" />
+        </span>
+      )}
     </button>
   );
 }

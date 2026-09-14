@@ -272,6 +272,34 @@ describe('IconButton tone', () => {
   });
 });
 
+describe('IconButton size', () => {
+  it('pads a dense row less than the default', () => {
+    render(<IconButton label="Löschen" icon={<svg />} size="sm" />);
+    const button = screen.getByRole('button', { name: 'Löschen' });
+    expect(button).toHaveClass('p-0.5');
+    expect(button).not.toHaveClass('p-1.5');
+  });
+});
+
+describe('IconButton pending', () => {
+  it('disables the button but keeps its label readable', () => {
+    render(<IconButton label="Löschen" icon={<svg data-testid="icon" />} pending />);
+    const button = screen.getByRole('button', { name: 'Löschen' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    // The icon stays in the DOM, only hidden, so the button keeps its size.
+    expect(screen.getByTestId('icon')).toBeInTheDocument();
+  });
+
+  it('ignores a second click while the first is still running', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<IconButton label="Löschen" icon={<svg />} pending onClick={onClick} />);
+    await user.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
 describe('useSort firstDir', () => {
   it('starts a column in the direction firstDir gives it', () => {
     const firstDir = (key: string) => (key === 'amount' ? 'desc' : 'asc');
