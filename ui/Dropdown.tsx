@@ -167,6 +167,9 @@ function Popover({
       role="listbox"
       aria-label={label}
       aria-multiselectable={multiple || undefined}
+      // Inside a <label> (as in Field) a click on an option would be forwarded to the
+      // trigger and reopen or close the list; cancelling the default stops that.
+      onClick={(e) => e.preventDefault()}
       style={{ position: 'fixed', ...style }}
       className="z-[60] max-w-80 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-1 shadow-lg"
     >

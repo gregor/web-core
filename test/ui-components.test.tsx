@@ -393,6 +393,19 @@ describe('Dropdown', () => {
     await user.click(screen.getByText('draußen'));
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
+
+  it('stays closed after a pick inside a Field', async () => {
+    const user = userEvent.setup();
+    render(
+      <Field label="Sorte">
+        <DropdownHarness />
+      </Field>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Sorte' }));
+    await user.click(screen.getByRole('option', { name: 'Birne' }));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('pear');
+  });
 });
 
 function MultiHarness({ summary }: { summary?: (n: number) => string }) {
@@ -436,6 +449,20 @@ describe('MultiDropdown', () => {
     await user.click(screen.getByRole('button', { name: 'Filter entfernen' }));
     expect(trigger).toHaveTextContent('Alle Sorten');
     expect(screen.queryByRole('button', { name: 'Filter entfernen' })).not.toBeInTheDocument();
+  });
+
+  it('stays open while toggling inside a Field', async () => {
+    const user = userEvent.setup();
+    render(
+      <Field label="Sorten">
+        <MultiHarness summary={(n) => `${n} Sorten`} />
+      </Field>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Sorten' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('option', { name: 'Apfel' }));
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    expect(trigger).toHaveTextContent('Apfel');
   });
 });
 
