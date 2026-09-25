@@ -47,8 +47,10 @@ updates:
         patterns: ['@typescript-eslint/*']
       tailwindcss:
         patterns: ['tailwindcss', '@tailwindcss/*']
+      # @vitest/* plugins peer-depend on the exact vitest version, so bumping
+      # either one alone fails `npm ci` with ERESOLVE.
       vite:
-        patterns: ['vite', '@vitejs/*', 'vitest']
+        patterns: ['vite', '@vitejs/*', 'vitest', '@vitest/*']
       eslint:
         patterns: ['eslint', '@eslint/*', 'eslint-plugin-*']
 
