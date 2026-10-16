@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { manualChunksFromMap } from '../config/vite.js';
 import { resolveBin } from '../lib/resolve-bin.js';
+import { EXACT_PEERS, peerRangeFor } from '../scripts/sync-peers.mjs';
 import { compareVersions, releaseNotes } from '../lib/release-notes.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -119,13 +120,20 @@ describe('package manifest', () => {
   // package is declared twice and the devDependency is what actually gets bumped.
   // If only one of the two moves, apps silently keep the old version: the peer is
   // what they resolve against, and nothing else compares the pair.
-  it.each(RUNTIME_PEERS)('pins %s identically as a peer and a devDependency', (pkg) => {
-    expect(manifest.devDependencies?.[pkg]).toBe(manifest.peerDependencies?.[pkg]);
+  it.each([...RUNTIME_PEERS, ...TOOLING_PEERS])('derives the %s peer from its devDependency pin', (pkg) => {
+    expect(manifest.devDependencies?.[pkg]).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(manifest.peerDependencies?.[pkg]).toBe(peerRangeFor(pkg, manifest.devDependencies[pkg]));
   });
 
-  // Exact pins, not ranges: the point of centralising these is that one version is
-  // in force everywhere. A caret here would let five apps drift apart again.
-  it.each(RUNTIME_PEERS)('pins %s exactly', (pkg) => {
+  // Tilde, not caret: the point of centralising these is that one version is in
+  // force everywhere. A tilde only lets an app pick up a newer patch, which is what
+  // keeps an upstream patch from failing every install before Dependabot bumps it
+  // (react 19.3.1, #83). A caret would let five apps drift a whole minor apart.
+  it.each(RUNTIME_PEERS)('lets %s float by patch only', (pkg) => {
+    expect(manifest.peerDependencies?.[pkg]).toMatch(/^~\d+\.\d+\.\d+$/);
+  });
+
+  it.each(EXACT_PEERS)('pins %s exactly, to match the @vitest/* packages pinned beside it', (pkg) => {
     expect(manifest.peerDependencies?.[pkg]).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
@@ -147,9 +155,13 @@ describe('runtime peers reach the app', () => {
     expect(resolved.startsWith(nested)).toBe(false);
   });
 
-  it.each(RUNTIME_PEERS)('installs %s at the version this package pins', (pkg) => {
+  // The pin is the floor, and the tilde only allows a newer patch on the same minor.
+  it.each(RUNTIME_PEERS)('installs %s at the pinned minor, no older than the pin', (pkg) => {
     const resolved = createRequire(path.join(fixture, 'noop.js')).resolve(`${pkg}/package.json`);
-    expect(JSON.parse(readFileSync(resolved, 'utf8')).version).toBe(manifest.peerDependencies[pkg]);
+    const [major, minor, patch] = JSON.parse(readFileSync(resolved, 'utf8')).version.split('.').map(Number);
+    const [pinMajor, pinMinor, pinPatch] = manifest.devDependencies[pkg].split('.').map(Number);
+    expect([major, minor]).toEqual([pinMajor, pinMinor]);
+    expect(patch).toBeGreaterThanOrEqual(pinPatch);
   });
 });
 
