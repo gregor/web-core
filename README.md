@@ -41,8 +41,10 @@ An app declares **none** of the 13 runtime packages and none of the tooling. Its
 `dependencies` are only what is genuinely its own — `pdfkit`, `@dnd-kit/*`,
 `puppeteer-core` and the like.
 
-To deviate from a pin, use `overrides`. A plain direct dependency at a different
-version is an `ERESOLVE` failure against an exact peer, which is the point:
+Runtime peers are tilde ranges (`~19.3.1`): an app may pick up a newer patch, so an
+upstream patch release does not break installs before Dependabot bumps it here, but
+nothing further. To deviate from a pin, use `overrides`. A plain direct dependency
+on a different minor is an `ERESOLVE` failure against the peer, which is the point:
 
 ```jsonc
 { "overrides": { "date-fns": "4.5.0" } }
@@ -159,10 +161,12 @@ the published package and the test fixture always get fresh output.
   would land in an app's `.bin` anyway. The wrapper makes resolution deterministic
   (and survives pnpm), which is also why ejecting is cheap.
 - **Consumers must not add `vite` back** as a direct dependency.
-- **Every runtime package is declared twice here**, at the same pin: once in
-  `peerDependencies` (what consumers resolve against) and once in `devDependencies`
-  (what Dependabot bumps, since it does not open PRs for peer-only entries). The
-  suite fails if the two drift; `npm run sync-peers` is the fix. A peer with no
+- **Every runtime package is declared twice here**: once in `devDependencies` at
+  an exact pin (what Dependabot bumps, since it does not open PRs for peer-only
+  entries) and once in `peerDependencies` as `~<pin>` (what consumers resolve
+  against). `vitest` is the exception and stays exact, because the `@vitest/*`
+  packages in `dependencies` require that exact version. The suite fails if the
+  two drift; `npm run sync-peers` is the fix. A peer with no
   matching devDependency never gets bumped at all — which is what happened to
   `@testing-library/react`.
 - **Nothing in `peerDependenciesMeta` may be optional.** Optional peers are not
