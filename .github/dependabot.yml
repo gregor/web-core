@@ -3,15 +3,22 @@ version: 2
 updates:
   - package-ecosystem: 'npm'
     directory: '/'
+    # Daily, not weekly: the fixture install in `npm test` resolves the newest
+    # versions from npm, so CI breaks as soon as an upstream patch conflicts with a
+    # pin. A weekly run on top of the cooldown left that window open for up to a
+    # week and a half (react 19.3.1, #83). Daily runs are weekdays only.
     schedule:
-      interval: 'weekly'
-      day: 'friday'
+      interval: 'daily'
       time: '15:00'
       timezone: 'Europe/Berlin'
+    # Patches and minors merge themselves once ci is green, so the cooldown is what
+    # keeps a compromised or yanked release out: most are caught within a day or
+    # two. Majors are merged by hand anyway, and the wait lets peers catch up (see
+    # the TS 7.0 ignore below).
     cooldown:
-      default-days: 14
-      semver-patch-days: 7
-      semver-minor-days: 14
+      default-days: 3
+      semver-patch-days: 2
+      semver-minor-days: 3
       semver-major-days: 28
     open-pull-requests-limit: 10
     reviewers: ['gregor']
