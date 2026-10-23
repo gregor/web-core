@@ -2,9 +2,10 @@
 // the bare pin for EXACT_PEERS.
 //
 // Each shared package is declared twice: the peer is what consumers resolve
-// against, the devDependency is what Dependabot bumps. Dependabot does rewrite a
-// matching peer in the same PR (#76 did), so this is the one-command fix for when
-// the pair drifts anyway — a hand edit, or a peer that was never dual-declared.
+// against, the devDependency is what Dependabot bumps. Dependabot rewrote exact
+// peers in the same PR (#76), but leaves `~` ranges behind, so
+// dependabot-sync-peers.yml runs this on every Dependabot PR. By hand, it is the
+// fix for a hand edit or a peer that was never dual-declared.
 //
 // Peers are tilde ranges so an upstream patch does not break installs before
 // Dependabot has caught up: react-dom 19.3.1 requires react ^19.3.1, and against an
