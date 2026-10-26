@@ -1,0 +1,47 @@
+# Dependabot bumps the devDependency pin but leaves the matching `~<pin>` peer
+# behind (#93, #97, #100, #104), so every such PR failed the smoke tests until
+# someone ran `npm run sync-peers` by hand. This does that on the PR branch.
+name: dependabot sync peers
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  sync-peers:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the synced commit
+      actions: write # dispatch ci for it
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+      - id: node
+        run: echo "version=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+          cache: npm
+      - run: npm run sync-peers
+      # --ignore-scripts: this job holds a write token, and only the lockfile's
+      # root peer ranges need to change, so no package code has to run.
+      - run: npm install --package-lock-only --ignore-scripts
+      - id: diff
+        run: git diff --quiet && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
+      - if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am 'chore: Sync peers with their pins'
+          git push
+      # A push made with GITHUB_TOKEN starts no workflows, so the new head would
+      # never get the required `test` check and auto-merge would wait forever.
+      # workflow_dispatch is the one trigger GITHUB_TOKEN is allowed to fire.
+      - if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.head_ref }}
+        run: gh workflow run ci.yml --ref "$BRANCH"

@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_call:
+  # dependabot-sync-peers.yml starts this for the commit it pushes.
+  workflow_dispatch:
 
 permissions:
   contents: read

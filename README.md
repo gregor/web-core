@@ -166,7 +166,8 @@ the published package and the test fixture always get fresh output.
   entries) and once in `peerDependencies` as `~<pin>` (what consumers resolve
   against). `vitest` is the exception and stays exact, because the `@vitest/*`
   packages in `dependencies` require that exact version. The suite fails if the
-  two drift; `npm run sync-peers` is the fix. A peer with no
+  two drift; `npm run sync-peers` is the fix, and `dependabot-sync-peers.yml`
+  runs it on every Dependabot PR. A peer with no
   matching devDependency never gets bumped at all — which is what happened to
   `@testing-library/react`.
 - **Nothing in `peerDependenciesMeta` may be optional.** Optional peers are not
