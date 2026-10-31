@@ -139,9 +139,17 @@ jobs:
             echo "::warning title=Fan-out skipped::FANOUT_TOKEN is not set, so ${{ matrix.repo }} was not notified. It will pick up ${VERSION#v} on its next weekly Dependabot run."
             exit 0
           fi
-          if ! gh api "repos/${{ github.repository_owner }}/${{ matrix.repo }}/dispatches" \
+          if ! output="$(gh api "repos/${{ github.repository_owner }}/${{ matrix.repo }}/dispatches" \
               -f event_type=web-core-release \
-              -F "client_payload[version]=${VERSION#v}"; then
-            echo "::warning title=Fan-out failed::Could not dispatch to ${{ matrix.repo }}. Dependabot remains the fallback."
+              -F "client_payload[version]=${VERSION#v}" 2>&1)"; then
+            # gh ends its error body without a newline. Printed straight through, the
+            # ::warning below would not start a line, and GitHub would treat it as plain
+            # log text, leaving a green run with no annotation (v2.7.0).
+            printf '%s\n' "$output"
+            case "$output" in
+              *"HTTP 401"*) reason="FANOUT_TOKEN is expired or revoked. Mint a new one and run scripts/rotate-fanout-token.sh." ;;
+              *) reason="See the step log for the error." ;;
+            esac
+            echo "::warning title=Fan-out failed::Could not dispatch to ${{ matrix.repo }}. $reason Dependabot remains the fallback."
             exit 0
           fi
